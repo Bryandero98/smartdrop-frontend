@@ -6,32 +6,34 @@ export default function Footer() {
     <Flex
       as="footer"
       w={{ base: "full", md: "95%" }}
-      h={{ base: "auto", md: 5 }}
+      maxW="1400px"
       align="center"
       justify={{ base: "center", md: "space-between" }}
       direction={{ base: "column", md: "row" }}
       gap={{ base: 2, md: 0 }}
-      borderTop="1px solid #454545"
-      borderBottom="1px solid #454545"
-      py={5}
+      borderTop="1px solid"
+      borderColor="app.border"
+      py={6}
       mx="auto"
-      my={8}
+      mt={8}
       px={{ base: 4, md: 0 }}
+      fontSize="sm"
+      color="app.muted"
     >
-      <Text px={{ base: 0, md: 8 }}>SMARTDROP</Text>
+      <Text px={{ base: 0, md: 8 }} fontWeight="semibold" color="app.text">SmartDrop</Text>
       <ChakraLink
         as={NextLink}
         href="/contributors"
         px={{ base: 0, md: 8 }}
-        color="white"
-        textDecoration="underline"
+        color="app.muted"
+        _hover={{ color: "app.accent" }}
         fontSize="sm"
         textAlign="center"
         overflowWrap="anywhere"
       >
-        Contributors (Lernza community)
+        Contributors
       </ChakraLink>
-      <Text px={{ base: 0, md: 8 }}>2026</Text>
+      <Text px={{ base: 0, md: 8 }}>© 2026</Text>
     </Flex>
   );
 }

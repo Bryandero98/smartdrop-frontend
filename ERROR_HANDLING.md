@@ -199,9 +199,10 @@ Wallet connection and signing errors:
 - `FREIGHTER_NOT_INSTALLED`: Extension not found
 - `FREIGHTER_REJECTED`: User denied connection
 - `FREIGHTER_NETWORK_MISMATCH`: Wallet on wrong network
+- `FREIGHTER_TIMEOUT`: Extension did not respond before the connection timeout
 - `FREIGHTER_UNKNOWN`: Other wallet issues
 
-**Is Transient**: No (cannot be automatically retried)
+**Is Transient**: Only `FREIGHTER_TIMEOUT` (user can retry after reloading or waking the extension)
 **Is Critical**: Yes (prevents user interaction)
 
 ### RPCError

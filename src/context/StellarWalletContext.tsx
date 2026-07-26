@@ -38,6 +38,8 @@ const StellarWalletContext = createContext<StellarWalletContextValue | null>(
   null
 );
 
+export const FREIGHTER_CONNECT_TIMEOUT_MS = 15_000;
+
 function normalizeNetworkName(value: string | null | undefined) {
   const normalized = value?.trim().toUpperCase();
   if (!normalized) return null;
@@ -57,24 +59,64 @@ function getFreighterNetworkName(details: FreighterNetworkDetails) {
   );
 }
 
+function createFreighterTimeoutError() {
+  return new FreighterError(
+    "FREIGHTER_TIMEOUT",
+    "Freighter did not respond before the wallet connection timeout",
+  );
+}
+
+async function withFreighterConnectTimeout<T>(
+  promise: Promise<T>,
+  deadlineMs: number,
+): Promise<T> {
+  const remainingMs = deadlineMs - Date.now();
+  if (remainingMs <= 0) {
+    throw createFreighterTimeoutError();
+  }
+
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(createFreighterTimeoutError()), remainingMs);
+  });
+
+  try {
+    return await Promise.race([promise, timeout]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
 export function StellarWalletProvider({ children }: { children: ReactNode }) {
   const [publicKey, setPublicKey] = useState<string | null>(null);
   const [walletApi, setWalletApi] = useState<FreighterWalletApi | null>(null);
   const [networkName, setNetworkName] = useState<string | null>(null);
 
   const refreshNetworkDetails = useCallback(
-    async (freighterModule?: FreighterModule) => {
+    async (freighterModule?: FreighterModule, deadlineMs?: number) => {
       try {
         const freighter =
           freighterModule ?? (await import("@stellar/freighter-api"));
-        const details = await freighter.getNetworkDetails();
+        const details =
+          deadlineMs === undefined
+            ? await freighter.getNetworkDetails()
+            : await withFreighterConnectTimeout(
+                freighter.getNetworkDetails(),
+                deadlineMs,
+              );
         if (details.error) {
           setNetworkName(null);
           return;
         }
         setNetworkName(getFreighterNetworkName(details));
-      } catch {
+      } catch (error) {
         setNetworkName(null);
+        if (
+          error instanceof FreighterError &&
+          error.code === "FREIGHTER_TIMEOUT"
+        ) {
+          throw error;
+        }
       }
     },
     [],
@@ -85,7 +127,11 @@ export function StellarWalletProvider({ children }: { children: ReactNode }) {
     const signingApi = freighter as unknown as FreighterWalletApi;
     
     try {
-      const connected = await freighter.isConnected();
+      const deadlineMs = Date.now() + FREIGHTER_CONNECT_TIMEOUT_MS;
+      const connected = await withFreighterConnectTimeout(
+        freighter.isConnected(),
+        deadlineMs,
+      );
       if (!connected.isConnected || connected.error) {
         throw new FreighterError(
           "FREIGHTER_NOT_INSTALLED",
@@ -93,9 +139,15 @@ export function StellarWalletProvider({ children }: { children: ReactNode }) {
         );
       }
 
-      const allowed = await freighter.isAllowed();
+      const allowed = await withFreighterConnectTimeout(
+        freighter.isAllowed(),
+        deadlineMs,
+      );
       if (!allowed.isAllowed || allowed.error) {
-        const access = await freighter.requestAccess();
+        const access = await withFreighterConnectTimeout(
+          freighter.requestAccess(),
+          deadlineMs,
+        );
         if (access.error) {
           throw new FreighterError(
             "FREIGHTER_REJECTED",
@@ -108,13 +160,16 @@ export function StellarWalletProvider({ children }: { children: ReactNode }) {
             "Failed to get wallet address"
           );
         }
-        await refreshNetworkDetails(freighter);
+        await refreshNetworkDetails(freighter, deadlineMs);
         setPublicKey(access.address);
         setWalletApi(signingApi);
         return;
       }
 
-      const addr = await freighter.getAddress();
+      const addr = await withFreighterConnectTimeout(
+        freighter.getAddress(),
+        deadlineMs,
+      );
       if (addr.error) {
         throw new FreighterError(
           "FREIGHTER_UNKNOWN",
@@ -122,7 +177,10 @@ export function StellarWalletProvider({ children }: { children: ReactNode }) {
         );
       }
       if (!addr.address) {
-        const access = await freighter.requestAccess();
+        const access = await withFreighterConnectTimeout(
+          freighter.requestAccess(),
+          deadlineMs,
+        );
         if (access.error) {
           throw new FreighterError(
             "FREIGHTER_REJECTED",
@@ -135,11 +193,11 @@ export function StellarWalletProvider({ children }: { children: ReactNode }) {
             "Failed to get wallet address"
           );
         }
-        await refreshNetworkDetails(freighter);
+        await refreshNetworkDetails(freighter, deadlineMs);
         setPublicKey(access.address);
         setWalletApi(signingApi);
       } else {
-        await refreshNetworkDetails(freighter);
+        await refreshNetworkDetails(freighter, deadlineMs);
         setPublicKey(addr.address);
         setWalletApi(signingApi);
       }

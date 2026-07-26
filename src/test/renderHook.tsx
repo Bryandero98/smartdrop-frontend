@@ -25,12 +25,19 @@ export function renderHook<T>(
   }
 
   const root = createRoot(container);
-  act(() => {
-    root.render(createElement(Wrapper, null, createElement(HookHarness)));
-  });
+  // `callback` is a closure — a caller that captures an outer `let` and
+  // mutates it before calling `rerender()` will see the hook re-invoked
+  // with the new value, the same way @testing-library/react-hooks works.
+  function renderOnce() {
+    act(() => {
+      root.render(createElement(Wrapper, null, createElement(HookHarness)));
+    });
+  }
+  renderOnce();
 
   return {
     result,
+    rerender: renderOnce,
     unmount: () => {
       act(() => {
         root.unmount();

@@ -37,6 +37,9 @@ jobs:
         run: npm run build
         env:
           BASE_PATH: /${{ github.event.repository.name }}
+          # Static export mode: skips API routes (incompatible with GitHub Pages).
+          # The /api/stats route is active in Vercel / `next start` deployments.
+          NEXT_EXPORT: "true"
 
       - name: Publish to gh-pages branch
         uses: peaceiris/actions-gh-pages@v4

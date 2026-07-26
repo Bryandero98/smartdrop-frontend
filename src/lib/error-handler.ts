@@ -50,8 +50,8 @@ export abstract class SmartDropError extends Error {
  * Freighter wallet-related errors.
  */
 export class FreighterError extends SmartDropError {
-  readonly code: "FREIGHTER_NOT_INSTALLED" | "FREIGHTER_REJECTED" | "FREIGHTER_NETWORK_MISMATCH" | "FREIGHTER_UNKNOWN";
-  readonly isTransient = false;
+  readonly code: "FREIGHTER_NOT_INSTALLED" | "FREIGHTER_REJECTED" | "FREIGHTER_NETWORK_MISMATCH" | "FREIGHTER_TIMEOUT" | "FREIGHTER_UNKNOWN";
+  readonly isTransient: boolean;
   readonly isCritical = true;
 
   constructor(
@@ -61,6 +61,7 @@ export class FreighterError extends SmartDropError {
   ) {
     super(message, originalError);
     this.code = code;
+    this.isTransient = code === "FREIGHTER_TIMEOUT";
     Object.setPrototypeOf(this, FreighterError.prototype);
   }
 
@@ -68,6 +69,7 @@ export class FreighterError extends SmartDropError {
     FREIGHTER_NOT_INSTALLED: "Freighter wallet extension is not installed. Install it from https://www.freighter.app to continue.",
     FREIGHTER_REJECTED: "You rejected the wallet connection request. Please approve to continue.",
     FREIGHTER_NETWORK_MISMATCH: "Your wallet is connected to a different network. Please switch to the correct network and try again.",
+    FREIGHTER_TIMEOUT: "Freighter is taking too long to respond. Try again, or reload the page if the extension stays unresponsive.",
     FREIGHTER_UNKNOWN: "Unable to connect to Freighter. Please try again or reinstall the extension.",
   }[this.code];
 

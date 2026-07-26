@@ -1,0 +1,308 @@
+{
+  "fetchedAt": "2026-07-05T00:00:00Z",
+  "source": "SmartDropLabs org (smartdrop-frontend, smartdrop-backend, smartdrop-contracts)",
+  "contributors": [
+    {
+      "login": "prodbycorne",
+      "html_url": "https://github.com/prodbycorne",
+      "avatar_url": "https://avatars.githubusercontent.com/u/277280234?v=4",
+      "contributions": 72,
+      "repos": [
+        "smartdrop-frontend",
+        "smartdrop-backend",
+        "smartdrop-contracts"
+      ]
+    },
+    {
+      "login": "stephanieoghenemega-eng",
+      "html_url": "https://github.com/stephanieoghenemega-eng",
+      "avatar_url": "https://avatars.githubusercontent.com/u/288002234?v=4",
+      "contributions": 38,
+      "repos": [
+        "smartdrop-contracts"
+      ]
+    },
+    {
+      "login": "presidojay1",
+      "html_url": "https://github.com/presidojay1",
+      "avatar_url": "https://avatars.githubusercontent.com/u/88345996?v=4",
+      "contributions": 22,
+      "repos": [
+        "smartdrop-frontend"
+      ]
+    },
+    {
+      "login": "ProtonsAndElectrons",
+      "html_url": "https://github.com/ProtonsAndElectrons",
+      "avatar_url": "https://avatars.githubusercontent.com/u/143947806?v=4",
+      "contributions": 11,
+      "repos": [
+        "smartdrop-backend",
+        "smartdrop-contracts"
+      ]
+    },
+    {
+      "login": "mariocodecr",
+      "html_url": "https://github.com/mariocodecr",
+      "avatar_url": "https://avatars.githubusercontent.com/u/77696527?v=4",
+      "contributions": 10,
+      "repos": [
+        "smartdrop-backend"
+      ]
+    },
+    {
+      "login": "Gbangbolaoluwagbemiga",
+      "html_url": "https://github.com/Gbangbolaoluwagbemiga",
+      "avatar_url": "https://avatars.githubusercontent.com/u/104629140?v=4",
+      "contributions": 6,
+      "repos": [
+        "smartdrop-frontend",
+        "smartdrop-contracts"
+      ]
+    },
+    {
+      "login": "Uchechukwu-Ekezie",
+      "html_url": "https://github.com/Uchechukwu-Ekezie",
+      "avatar_url": "https://avatars.githubusercontent.com/u/105205124?v=4",
+      "contributions": 5,
+      "repos": [
+        "smartdrop-frontend"
+      ]
+    },
+    {
+      "login": "Sparexonzy95",
+      "html_url": "https://github.com/Sparexonzy95",
+      "avatar_url": "https://avatars.githubusercontent.com/u/85989949?v=4",
+      "contributions": 4,
+      "repos": [
+        "smartdrop-frontend"
+      ]
+    },
+    {
+      "login": "CelestinaBeing",
+      "html_url": "https://github.com/CelestinaBeing",
+      "avatar_url": "https://avatars.githubusercontent.com/u/268417077?v=4",
+      "contributions": 3,
+      "repos": [
+        "smartdrop-frontend"
+      ]
+    },
+    {
+      "login": "boys-cyberhub",
+      "html_url": "https://github.com/boys-cyberhub",
+      "avatar_url": "https://avatars.githubusercontent.com/u/270611669?v=4",
+      "contributions": 3,
+      "repos": [
+        "smartdrop-backend"
+      ]
+    },
+    {
+      "login": "leo1987820",
+      "html_url": "https://github.com/leo1987820",
+      "avatar_url": "https://avatars.githubusercontent.com/u/290468635?v=4",
+      "contributions": 3,
+      "repos": [
+        "smartdrop-backend"
+      ]
+    },
+    {
+      "login": "simplicityf",
+      "html_url": "https://github.com/simplicityf",
+      "avatar_url": "https://avatars.githubusercontent.com/u/155020971?v=4",
+      "contributions": 3,
+      "repos": [
+        "smartdrop-backend",
+        "smartdrop-contracts"
+      ]
+    },
+    {
+      "login": "LawalRahman",
+      "html_url": "https://github.com/LawalRahman",
+      "avatar_url": "https://avatars.githubusercontent.com/u/25499696?v=4",
+      "contributions": 2,
+      "repos": [
+        "smartdrop-frontend"
+      ]
+    },
+    {
+      "login": "cristianFleita",
+      "html_url": "https://github.com/cristianFleita",
+      "avatar_url": "https://avatars.githubusercontent.com/u/87950451?v=4",
+      "contributions": 2,
+      "repos": [
+        "smartdrop-frontend"
+      ]
+    },
+    {
+      "login": "pope-h",
+      "html_url": "https://github.com/pope-h",
+      "avatar_url": "https://avatars.githubusercontent.com/u/41937466?v=4",
+      "contributions": 2,
+      "repos": [
+        "smartdrop-frontend"
+      ]
+    },
+    {
+      "login": "Josie123-Dev",
+      "html_url": "https://github.com/Josie123-Dev",
+      "avatar_url": "https://avatars.githubusercontent.com/u/192779950?v=4",
+      "contributions": 2,
+      "repos": [
+        "smartdrop-backend"
+      ]
+    },
+    {
+      "login": "MyouzzZ",
+      "html_url": "https://github.com/MyouzzZ",
+      "avatar_url": "https://avatars.githubusercontent.com/u/200975354?v=4",
+      "contributions": 2,
+      "repos": [
+        "smartdrop-backend"
+      ]
+    },
+    {
+      "login": "chiscookeke11",
+      "html_url": "https://github.com/chiscookeke11",
+      "avatar_url": "https://avatars.githubusercontent.com/u/137373308?v=4",
+      "contributions": 2,
+      "repos": [
+        "smartdrop-backend"
+      ]
+    },
+    {
+      "login": "Q-ARAYA",
+      "html_url": "https://github.com/Q-ARAYA",
+      "avatar_url": "https://avatars.githubusercontent.com/u/125586179?v=4",
+      "contributions": 2,
+      "repos": [
+        "smartdrop-backend"
+      ]
+    },
+    {
+      "login": "Cmitchelle7",
+      "html_url": "https://github.com/Cmitchelle7",
+      "avatar_url": "https://avatars.githubusercontent.com/u/295695880?v=4",
+      "contributions": 1,
+      "repos": [
+        "smartdrop-frontend"
+      ]
+    },
+    {
+      "login": "Joneshaves",
+      "html_url": "https://github.com/Joneshaves",
+      "avatar_url": "https://avatars.githubusercontent.com/u/192105863?v=4",
+      "contributions": 1,
+      "repos": [
+        "smartdrop-frontend"
+      ]
+    },
+    {
+      "login": "Temi-suwa18",
+      "html_url": "https://github.com/Temi-suwa18",
+      "avatar_url": "https://avatars.githubusercontent.com/u/271503102?v=4",
+      "contributions": 1,
+      "repos": [
+        "smartdrop-frontend"
+      ]
+    },
+    {
+      "login": "benfoster-dev",
+      "html_url": "https://github.com/benfoster-dev",
+      "avatar_url": "https://avatars.githubusercontent.com/u/279239189?v=4",
+      "contributions": 1,
+      "repos": [
+        "smartdrop-frontend"
+      ]
+    },
+    {
+      "login": "chonilius",
+      "html_url": "https://github.com/chonilius",
+      "avatar_url": "https://avatars.githubusercontent.com/u/270450070?v=4",
+      "contributions": 1,
+      "repos": [
+        "smartdrop-frontend"
+      ]
+    },
+    {
+      "login": "storm-beyndtech",
+      "html_url": "https://github.com/storm-beyndtech",
+      "avatar_url": "https://avatars.githubusercontent.com/u/84206541?v=4",
+      "contributions": 1,
+      "repos": [
+        "smartdrop-frontend"
+      ]
+    },
+    {
+      "login": "ChukwuemekaP1",
+      "html_url": "https://github.com/ChukwuemekaP1",
+      "avatar_url": "https://avatars.githubusercontent.com/u/208138191?v=4",
+      "contributions": 1,
+      "repos": [
+        "smartdrop-backend"
+      ]
+    },
+    {
+      "login": "Cryptojigi",
+      "html_url": "https://github.com/Cryptojigi",
+      "avatar_url": "https://avatars.githubusercontent.com/u/124549883?v=4",
+      "contributions": 1,
+      "repos": [
+        "smartdrop-backend"
+      ]
+    },
+    {
+      "login": "julianvillalba688",
+      "html_url": "https://github.com/julianvillalba688",
+      "avatar_url": "https://avatars.githubusercontent.com/u/186356064?v=4",
+      "contributions": 1,
+      "repos": [
+        "smartdrop-backend"
+      ]
+    },
+    {
+      "login": "oomokaro1",
+      "html_url": "https://github.com/oomokaro1",
+      "avatar_url": "https://avatars.githubusercontent.com/u/287983761?v=4",
+      "contributions": 1,
+      "repos": [
+        "smartdrop-backend"
+      ]
+    },
+    {
+      "login": "romanpery",
+      "html_url": "https://github.com/romanpery",
+      "avatar_url": "https://avatars.githubusercontent.com/u/13783582?v=4",
+      "contributions": 1,
+      "repos": [
+        "smartdrop-backend"
+      ]
+    },
+    {
+      "login": "stableprogrammer",
+      "html_url": "https://github.com/stableprogrammer",
+      "avatar_url": "https://avatars.githubusercontent.com/u/295812920?v=4",
+      "contributions": 1,
+      "repos": [
+        "smartdrop-backend"
+      ]
+    },
+    {
+      "login": "Bug-Hunter-X",
+      "html_url": "https://github.com/Bug-Hunter-X",
+      "avatar_url": "https://avatars.githubusercontent.com/u/190429156?v=4",
+      "contributions": 1,
+      "repos": [
+        "smartdrop-contracts"
+      ]
+    },
+    {
+      "login": "Justprotocol",
+      "html_url": "https://github.com/Justprotocol",
+      "avatar_url": "https://avatars.githubusercontent.com/u/87586547?v=4",
+      "contributions": 1,
+      "repos": [
+        "smartdrop-contracts"
+      ]
+    }
+  ]
+}

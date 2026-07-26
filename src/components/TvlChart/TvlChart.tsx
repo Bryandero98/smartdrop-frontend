@@ -47,7 +47,7 @@ export default function TvlChart({ poolId }: TvlChartProps) {
   }, [poolId]);
 
   if (loading) {
-    return <Skeleton height="180px" borderRadius="2xl" />;
+    return <Skeleton height="180px" borderRadius="2xl" startColor="app.border" endColor="app.surfaceHover" />;
   }
 
   if (data.length === 0) {

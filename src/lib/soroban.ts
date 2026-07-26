@@ -1603,13 +1603,31 @@ sorobanService.initialize();
 
 // Utility functions
 export const formatCredits = (credits: string): string => {
-  const num = parseFloat(credits);
-  if (num >= 1000000) {
+  const normalizedCredits = credits.trim();
+  if (!normalizedCredits || normalizedCredits === '-' || normalizedCredits === '—') {
+    return credits;
+  }
+
+  const num = Number(normalizedCredits);
+  if (!Number.isFinite(num)) {
+    return '0';
+  }
+
+  const absoluteValue = Math.abs(num);
+  if (absoluteValue >= 999950) {
     return `${(num / 1000000).toFixed(1)}M`;
-  } else if (num >= 1000) {
+  }
+  if (absoluteValue >= 999.95) {
     return `${(num / 1000).toFixed(1)}K`;
   }
-  return num.toFixed(0);
+  if (num === 0) {
+    return '0';
+  }
+
+  const fractionDigits = absoluteValue < 1 ? 7 : absoluteValue < 100 ? 4 : 2;
+  const formattedCredits = num.toFixed(fractionDigits).replace(/\.?0+$/, '');
+
+  return Number(formattedCredits) === 0 ? normalizedCredits : formattedCredits;
 };
 
 export const formatLockTime = (timestamp: number): string => {

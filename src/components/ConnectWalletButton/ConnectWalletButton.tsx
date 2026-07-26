@@ -113,7 +113,8 @@ export default function ConnectWalletButton({
       px={6}
       py={4}
       fontWeight="bold"
-      _hover={{ opacity: 0.9 }}
+      transition="box-shadow 0.2s ease, opacity 0.2s ease"
+      _hover={{ opacity: 0.9, boxShadow: "glow" }}
       {...buttonProps}
       onClick={() => void handleConnect()}
       isLoading={isConnecting || Boolean(buttonProps.isLoading)}

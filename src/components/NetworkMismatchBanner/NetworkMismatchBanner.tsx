@@ -13,8 +13,8 @@ export default function NetworkMismatchBanner() {
     <Alert
       status="warning"
       position="sticky"
-      top={0}
-      zIndex={20}
+      top={{ base: "auto", md: "80px" }}
+      zIndex={10}
       borderRadius={0}
       justifyContent="center"
       color="app.text"
