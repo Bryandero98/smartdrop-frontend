@@ -16,7 +16,6 @@
     "playwright": "playwright test --config e2e/playwright.config.ts",
     "contributors:sync": "node scripts/sync-lernza-contributors.mjs",
     "contributors:github-insights": "node scripts/record-lernza-github-coauthors.mjs"
-    "playwright": "playwright test --config e2e/playwright.config.ts"
   },
   "dependencies": {
     "@chakra-ui/next-js": "^2.4.2",
