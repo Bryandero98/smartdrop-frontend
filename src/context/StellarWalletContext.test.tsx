@@ -154,4 +154,22 @@ describe("StellarWalletContext visibilitychange refresh", () => {
     expect(screen.getByTestId("is-mismatch").textContent).toBe("false");
   });
 
+  it("connect()'s existing timeout-bounded getNetworkDetails call is unaffected by this fix", async () => {
+    // isConnected/isAllowed resolve normally, but getNetworkDetails itself
+    // hangs during the connect() flow — exercising the already-correct
+    // connect()-path timeout, not the visibilitychange one.
+    freighterMock.getNetworkDetails.mockImplementation(
+      () => new Promise(() => {}),
+    );
+
+    renderHarness();
+    fireEvent.click(screen.getByRole("button", { name: "Connect" }));
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(FREIGHTER_CONNECT_TIMEOUT_MS);
+    });
+
+    expect(screen.getByTestId("network-name").textContent).toBe("null");
+  });
+
 });
