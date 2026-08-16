@@ -220,12 +220,29 @@ export function StellarWalletProvider({ children }: { children: ReactNode }) {
     setNetworkName(null);
   }, []);
 
+  // NOTE: this listener does not fire when a user opens the Freighter
+  // extension popup while this tab stays visible — extension popups are a
+  // separate top-level browsing context, not an overlay that hides the
+  // page, so document.visibilityState never changes. That means the most
+  // common way users actually switch Freighter's network (click the
+  // extension icon, change network, close the popup) doesn't trigger this
+  // refresh at all. That's a separate, likely more impactful gap (missing
+  // trigger, not unreliable timing) — tracked as a follow-up, out of scope
+  // for the timeout fix below. See #140.
   useEffect(() => {
     if (!publicKey) return undefined;
 
     const handleVisibilityChange = () => {
       if (document.visibilityState === "visible") {
-        void refreshNetworkDetails();
+        // Bounded the same way connect() bounds every Freighter call — an
+        // unresponsive extension (crashed background worker, hung native-
+        // messaging bridge) must not leave networkName/isNetworkMismatch
+        // frozen at a stale pre-refresh value forever. refreshNetworkDetails
+        // already resets networkName to null on any caught error, including
+        // this timeout, so no extra handling is needed here beyond
+        // preventing the rejection from surfacing as an unhandled rejection.
+        const deadlineMs = Date.now() + FREIGHTER_CONNECT_TIMEOUT_MS;
+        void refreshNetworkDetails(undefined, deadlineMs).catch(() => {});
       }
     };
 
