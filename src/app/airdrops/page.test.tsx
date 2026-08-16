@@ -99,3 +99,107 @@ describe("AirdropsPage retry affordance (#96)", () => {
     });
   });
 });
+
+describe("AirdropsPage pagination (#131)", () => {
+  beforeEach(() => {
+    listAirdropsMock.mockReset();
+  });
+
+  it("renders pagination controls when total_pages > 1 and navigating pages triggers refetch with updated page", async () => {
+    const page1Data = {
+      airdrops: [
+        {
+          id: "a1",
+          name: "Genesis Drop",
+          asset: "XLM",
+          asset_issuer: "",
+          total_amount: 1000,
+          expiry_ledger: 123456,
+          status: "completed",
+          created_at: "2024-01-01T00:00:00Z",
+          updated_at: "2024-01-01T00:00:00Z",
+        },
+      ],
+      pagination: { page: 1, limit: 20, total: 45, total_pages: 3 },
+    };
+
+    const page2Data = {
+      airdrops: [
+        {
+          id: "a21",
+          name: "Airdrop 21",
+          asset: "XLM",
+          asset_issuer: "",
+          total_amount: 500,
+          expiry_ledger: 123456,
+          status: "completed",
+          created_at: "2024-01-01T00:00:00Z",
+          updated_at: "2024-01-01T00:00:00Z",
+        },
+      ],
+      pagination: { page: 2, limit: 20, total: 45, total_pages: 3 },
+    };
+
+    listAirdropsMock.mockImplementation(async (page) => {
+      if (page === 1) return page1Data;
+      if (page === 2) return page2Data;
+      return page1Data;
+    });
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText("Genesis Drop")).toBeTruthy();
+    });
+
+    const prevBtn = screen.getByRole("button", { name: "Prev" });
+    const nextBtn = screen.getByRole("button", { name: "Next" });
+    const page1Btn = screen.getByRole("button", { name: "1" });
+    const page2Btn = screen.getByRole("button", { name: "2" });
+    const page3Btn = screen.getByRole("button", { name: "3" });
+
+    expect(prevBtn.hasAttribute("disabled")).toBe(true);
+    expect(nextBtn.hasAttribute("disabled")).toBe(false);
+    expect(page1Btn).toBeTruthy();
+    expect(page2Btn).toBeTruthy();
+    expect(page3Btn).toBeTruthy();
+
+    fireEvent.click(nextBtn);
+
+    await waitFor(() => {
+      expect(screen.getByText("Airdrop 21")).toBeTruthy();
+    });
+
+    expect(listAirdropsMock).toHaveBeenCalledWith(2, 20);
+    expect(screen.getByRole("button", { name: "Prev" }).hasAttribute("disabled")).toBe(false);
+  });
+
+  it("does not render pagination controls when total_pages <= 1", async () => {
+    listAirdropsMock.mockResolvedValueOnce({
+      airdrops: [
+        {
+          id: "a1",
+          name: "Genesis Drop",
+          asset: "XLM",
+          asset_issuer: "",
+          total_amount: 1000,
+          expiry_ledger: 123456,
+          status: "completed",
+          created_at: "2024-01-01T00:00:00Z",
+          updated_at: "2024-01-01T00:00:00Z",
+        },
+      ],
+      pagination: { page: 1, limit: 20, total: 1, total_pages: 1 },
+    });
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText("Genesis Drop")).toBeTruthy();
+    });
+
+    expect(screen.queryByRole("button", { name: "Prev" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Next" })).toBeNull();
+  });
+});
+

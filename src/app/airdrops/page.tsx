@@ -4,6 +4,7 @@ import { useState } from "react";
 import {
   Badge,
   Box,
+  Button,
   Flex,
   HStack,
   Spinner,
@@ -28,13 +29,15 @@ function statusColor(status: string) {
 }
 
 export default function AirdropsPage() {
-  const [page] = useState(1);
+  const [page, setPage] = useState(1);
 
   const { data, isLoading, isError, error, isFetching, refetch } = useQuery({
     queryKey: ["airdrops", page],
     queryFn: () => listAirdrops(page, 20),
     ...backendQueryRetry,
   });
+
+  const totalPages = data?.pagination.total_pages ?? 1;
 
   return (
     <Flex direction="column" align="center" px={{ base: 6, md: 16 }} py={10} gap={8}>
@@ -114,6 +117,56 @@ export default function AirdropsPage() {
             ))}
           </Flex>
         )}
+
+        {totalPages > 1 && (
+          <Flex gap={2} mt={6} align="center" wrap="wrap" justify="center">
+            <Button
+              size="sm"
+              borderRadius="2xl"
+              variant="outline"
+              borderColor="app.border"
+              color="app.text"
+              isDisabled={page === 1}
+              onClick={() => setPage((p) => p - 1)}
+              _hover={{ borderColor: "app.accent", color: "app.accent" }}
+            >
+              Prev
+            </Button>
+
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+              <Button
+                key={p}
+                size="sm"
+                borderRadius="2xl"
+                variant={p === page ? "solid" : "outline"}
+                bg={p === page ? "app.accent" : undefined}
+                color={p === page ? "app.onAccent" : "app.text"}
+                borderColor="app.border"
+                onClick={() => setPage(p)}
+                _hover={{
+                  borderColor: "app.accent",
+                  color: p === page ? "app.onAccent" : "app.accent",
+                }}
+              >
+                {p}
+              </Button>
+            ))}
+
+            <Button
+              size="sm"
+              borderRadius="2xl"
+              variant="outline"
+              borderColor="app.border"
+              color="app.text"
+              isDisabled={page === totalPages}
+              onClick={() => setPage((p) => p + 1)}
+              _hover={{ borderColor: "app.accent", color: "app.accent" }}
+            >
+              Next
+            </Button>
+          </Flex>
+        )}
+
         {data && data.pagination.total > 0 && (
           <Text fontSize="xs" color="app.muted" mt={4}>
             {data.pagination.total} airdrop{data.pagination.total === 1 ? "" : "s"} total
