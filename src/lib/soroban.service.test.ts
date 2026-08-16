@@ -49,6 +49,7 @@ import {
   unlockAssets,
   validateSimulationAuth,
 } from "./soroban";
+import { SecurityError } from "./error-handler";
 
 const POOL_CONTRACT_ID =
   "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABSC4";
@@ -732,6 +733,7 @@ describe("SorobanService RPC writes", () => {
     );
     expect(walletApi.signTransaction).toHaveBeenCalledWith(expect.any(String), {
       networkPassphrase: expect.any(String),
+      address: USER_PUBLIC_KEY,
     });
     expect(rpcServer.sendTransaction).toHaveBeenCalledTimes(1);
   });
