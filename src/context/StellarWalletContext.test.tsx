@@ -114,4 +114,24 @@ describe("StellarWalletContext visibilitychange refresh", () => {
     expect(freighterMock.getNetworkDetails).toHaveBeenCalledTimes(2);
   });
 
+  it("resets networkName to null when a hung Freighter extension times out during a visibilitychange refresh", async () => {
+    freighterMock.getNetworkDetails.mockResolvedValueOnce(TESTNET_DETAILS);
+
+    renderHarness();
+    await connectAndSettle();
+    expect(screen.getByTestId("network-name").textContent).toBe("TESTNET");
+
+    // From here on, Freighter hangs forever on every call.
+    freighterMock.getNetworkDetails.mockImplementation(
+      () => new Promise(() => {}),
+    );
+
+    fireVisibilityChange();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(FREIGHTER_CONNECT_TIMEOUT_MS);
+    });
+
+    expect(screen.getByTestId("network-name").textContent).toBe("null");
+  });
+
 });
