@@ -961,7 +961,9 @@ export class SorobanService {
       const signedTransaction = getSignedTransactionXdr(
         await walletApi.signTransaction(preparedTransaction.toXDR(), {
           networkPassphrase,
+          address: userAddress,
         }),
+        userAddress,
       );
 
       let finalTxXdr = signedTransaction;
@@ -1102,7 +1104,9 @@ export class SorobanService {
       const signedTransaction = getSignedTransactionXdr(
         await walletApi.signTransaction(preparedTransaction.toXDR(), {
           networkPassphrase,
+          address: userAddress,
         }),
+        userAddress,
       );
 
       let finalTxXdr = signedTransaction;
@@ -1231,7 +1235,9 @@ export class SorobanService {
       const signedTransaction = getSignedTransactionXdr(
         await walletApi.signTransaction(preparedTransaction.toXDR(), {
           networkPassphrase,
+          address: userAddress,
         }),
+        userAddress,
       );
 
       const submissionResult = await this.rpcServer.sendTransaction(
