@@ -957,6 +957,193 @@ describe("SorobanService RPC writes", () => {
   });
 });
 
+describe("SorobanService signer address pinning (#139)", () => {
+  const OTHER_PUBLIC_KEY = StrKey.encodeEd25519PublicKey(Buffer.alloc(32, 3));
+
+  it("lockAssets rejects a transaction signed by a different Freighter account", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const { service, rpcServer } = makeService();
+    mockAssembleTransactionPassthrough();
+    rpcServer.simulateTransaction.mockResolvedValue({
+      result: { auth: [makeAuthEntry("lock_assets")] },
+      minResourceFee: "321",
+    });
+    const walletApi = {
+      signTransaction: vi.fn(async (xdrEnvelope: string) => ({
+        signedTxXdr: xdrEnvelope,
+        signerAddress: OTHER_PUBLIC_KEY,
+      })),
+    };
+
+    await expect(
+      service.lockAssets(POOL_ID, USER_PUBLIC_KEY, "50000000", walletApi),
+    ).rejects.toThrow(SecurityError);
+    expect(walletApi.signTransaction).toHaveBeenCalledWith(expect.any(String), {
+      networkPassphrase: expect.any(String),
+      address: USER_PUBLIC_KEY,
+    });
+    expect(rpcServer.sendTransaction).not.toHaveBeenCalled();
+  });
+
+  it("lockAssets proceeds when the signer address matches the connected account", async () => {
+    const { service, rpcServer } = makeService();
+    mockAssembleTransactionPassthrough();
+    rpcServer.simulateTransaction.mockResolvedValue({
+      result: { auth: [makeAuthEntry("lock_assets")] },
+      minResourceFee: "321",
+    });
+    rpcServer.sendTransaction.mockResolvedValue({
+      status: "PENDING",
+      hash: "lock-hash",
+    });
+    const walletApi = {
+      signTransaction: vi.fn(async (xdrEnvelope: string) => ({
+        signedTxXdr: xdrEnvelope,
+        signerAddress: USER_PUBLIC_KEY,
+      })),
+    };
+
+    const result = await service.lockAssets(
+      POOL_ID,
+      USER_PUBLIC_KEY,
+      "50000000",
+      walletApi,
+    );
+
+    expect(result).toMatchObject({ success: true, transactionHash: "lock-hash" });
+    expect(rpcServer.sendTransaction).toHaveBeenCalledTimes(1);
+  });
+
+  it("unlockAssets rejects a transaction signed by a different Freighter account", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const { service, rpcServer } = makeService();
+    mockAssembleTransactionPassthrough();
+    rpcServer.simulateTransaction.mockResolvedValue({
+      result: { auth: [makeAuthEntry("unlock_assets")] },
+      minResourceFee: "654",
+    });
+    const walletApi = {
+      signTransaction: vi.fn(async (xdrEnvelope: string) => ({
+        signedTxXdr: xdrEnvelope,
+        signerAddress: OTHER_PUBLIC_KEY,
+      })),
+    };
+
+    await expect(
+      service.unlockAssets(POOL_ID, USER_PUBLIC_KEY, "25000000", walletApi),
+    ).rejects.toThrow(SecurityError);
+    expect(walletApi.signTransaction).toHaveBeenCalledWith(expect.any(String), {
+      networkPassphrase: expect.any(String),
+      address: USER_PUBLIC_KEY,
+    });
+    expect(rpcServer.sendTransaction).not.toHaveBeenCalled();
+  });
+
+  it("unlockAssets proceeds when the signer address matches the connected account", async () => {
+    const { service, rpcServer } = makeService();
+    mockAssembleTransactionPassthrough();
+    rpcServer.simulateTransaction.mockResolvedValue({
+      result: { auth: [makeAuthEntry("unlock_assets")] },
+      minResourceFee: "654",
+    });
+    rpcServer.sendTransaction.mockResolvedValue({
+      status: "PENDING",
+      hash: "unlock-hash",
+    });
+    const walletApi = {
+      signTransaction: vi.fn(async (xdrEnvelope: string) => ({
+        signedTxXdr: xdrEnvelope,
+        signerAddress: USER_PUBLIC_KEY,
+      })),
+    };
+
+    const result = await service.unlockAssets(
+      POOL_ID,
+      USER_PUBLIC_KEY,
+      "25000000",
+      walletApi,
+    );
+
+    expect(result).toMatchObject({ success: true, transactionHash: "unlock-hash" });
+    expect(rpcServer.sendTransaction).toHaveBeenCalledTimes(1);
+  });
+
+  it("setBoost rejects a transaction signed by a different Freighter account", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const { service, rpcServer } = makeService();
+    mockAssembleTransactionPassthrough();
+    rpcServer.simulateTransaction.mockResolvedValue({
+      result: { auth: [makeAuthEntry("set_boost")] },
+      minResourceFee: "777",
+    });
+    const walletApi = {
+      signTransaction: vi.fn(async (xdrEnvelope: string) => ({
+        signedTxXdr: xdrEnvelope,
+        signerAddress: OTHER_PUBLIC_KEY,
+      })),
+    };
+
+    await expect(
+      service.setBoost(POOL_ID, USER_PUBLIC_KEY, 40, walletApi),
+    ).rejects.toThrow(SecurityError);
+    expect(walletApi.signTransaction).toHaveBeenCalledWith(expect.any(String), {
+      networkPassphrase: expect.any(String),
+      address: USER_PUBLIC_KEY,
+    });
+    expect(rpcServer.sendTransaction).not.toHaveBeenCalled();
+  });
+
+  it("setBoost proceeds when the signer address matches the connected account", async () => {
+    const { service, rpcServer } = makeService();
+    mockAssembleTransactionPassthrough();
+    rpcServer.simulateTransaction.mockResolvedValue({
+      result: { auth: [makeAuthEntry("set_boost")] },
+      minResourceFee: "777",
+    });
+    rpcServer.sendTransaction.mockResolvedValue({
+      status: "PENDING",
+      hash: "boost-hash",
+    });
+    const walletApi = {
+      signTransaction: vi.fn(async (xdrEnvelope: string) => ({
+        signedTxXdr: xdrEnvelope,
+        signerAddress: USER_PUBLIC_KEY,
+      })),
+    };
+
+    const result = await service.setBoost(POOL_ID, USER_PUBLIC_KEY, 40, walletApi);
+
+    expect(result).toMatchObject({ success: true, transactionHash: "boost-hash" });
+    expect(rpcServer.sendTransaction).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not block legacy bare-string signTransaction responses that omit signerAddress", async () => {
+    const { service, rpcServer } = makeService();
+    mockAssembleTransactionPassthrough();
+    rpcServer.simulateTransaction.mockResolvedValue({
+      result: { auth: [makeAuthEntry("lock_assets")] },
+      minResourceFee: "321",
+    });
+    rpcServer.sendTransaction.mockResolvedValue({
+      status: "PENDING",
+      hash: "lock-hash",
+    });
+    const walletApi = {
+      signTransaction: vi.fn(async (xdrEnvelope: string) => xdrEnvelope),
+    };
+
+    const result = await service.lockAssets(
+      POOL_ID,
+      USER_PUBLIC_KEY,
+      "50000000",
+      walletApi,
+    );
+
+    expect(result).toMatchObject({ success: true, transactionHash: "lock-hash" });
+    expect(rpcServer.sendTransaction).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe("SorobanService platform stats", () => {
   it("getPlatformStats aggregates pool totals from getFactoryPools", async () => {
     const { service } = makeService({ pool: false });
