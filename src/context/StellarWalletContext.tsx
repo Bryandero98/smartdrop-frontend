@@ -220,6 +220,15 @@ export function StellarWalletProvider({ children }: { children: ReactNode }) {
     setNetworkName(null);
   }, []);
 
+  // NOTE: this listener does not fire when a user opens the Freighter
+  // extension popup while this tab stays visible — extension popups are a
+  // separate top-level browsing context, not an overlay that hides the
+  // page, so document.visibilityState never changes. That means the most
+  // common way users actually switch Freighter's network (click the
+  // extension icon, change network, close the popup) doesn't trigger this
+  // refresh at all. That's a separate, likely more impactful gap (missing
+  // trigger, not unreliable timing) — tracked as a follow-up, out of scope
+  // for the timeout fix below. See #140.
   useEffect(() => {
     if (!publicKey) return undefined;
 
