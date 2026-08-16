@@ -225,7 +225,15 @@ export function StellarWalletProvider({ children }: { children: ReactNode }) {
 
     const handleVisibilityChange = () => {
       if (document.visibilityState === "visible") {
-        void refreshNetworkDetails();
+        // Bounded the same way connect() bounds every Freighter call — an
+        // unresponsive extension (crashed background worker, hung native-
+        // messaging bridge) must not leave networkName/isNetworkMismatch
+        // frozen at a stale pre-refresh value forever. refreshNetworkDetails
+        // already resets networkName to null on any caught error, including
+        // this timeout, so no extra handling is needed here beyond
+        // preventing the rejection from surfacing as an unhandled rejection.
+        const deadlineMs = Date.now() + FREIGHTER_CONNECT_TIMEOUT_MS;
+        void refreshNetworkDetails(undefined, deadlineMs).catch(() => {});
       }
     };
 
