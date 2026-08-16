@@ -201,4 +201,29 @@ describe("StellarWalletContext visibilitychange refresh", () => {
     expect(freighterMock.getNetworkDetails).toHaveBeenCalledTimes(1);
   });
 
+  it("never surfaces the timeout as an unhandled promise rejection", async () => {
+    freighterMock.getNetworkDetails.mockResolvedValueOnce(TESTNET_DETAILS);
+
+    const onUnhandledRejection = vi.fn();
+    window.addEventListener("unhandledrejection", onUnhandledRejection);
+
+    try {
+      renderHarness();
+      await connectAndSettle();
+
+      freighterMock.getNetworkDetails.mockImplementation(
+        () => new Promise(() => {}),
+      );
+
+      fireVisibilityChange();
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(FREIGHTER_CONNECT_TIMEOUT_MS);
+      });
+
+      expect(onUnhandledRejection).not.toHaveBeenCalled();
+    } finally {
+      window.removeEventListener("unhandledrejection", onUnhandledRejection);
+    }
+  });
+
 });
