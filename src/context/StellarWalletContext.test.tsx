@@ -134,4 +134,24 @@ describe("StellarWalletContext visibilitychange refresh", () => {
     expect(screen.getByTestId("network-name").textContent).toBe("null");
   });
 
+  it("resets isNetworkMismatch to false alongside networkName when the visibilitychange refresh times out", async () => {
+    freighterMock.getNetworkDetails.mockResolvedValueOnce(PUBLIC_DETAILS);
+
+    renderHarness();
+    await connectAndSettle();
+    expect(screen.getByTestId("is-mismatch").textContent).toBe("true");
+
+    freighterMock.getNetworkDetails.mockImplementation(
+      () => new Promise(() => {}),
+    );
+
+    fireVisibilityChange();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(FREIGHTER_CONNECT_TIMEOUT_MS);
+    });
+
+    expect(screen.getByTestId("network-name").textContent).toBe("null");
+    expect(screen.getByTestId("is-mismatch").textContent).toBe("false");
+  });
+
 });
