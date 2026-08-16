@@ -149,7 +149,7 @@ type FreighterSignTransactionResult =
 export interface FreighterWalletApi {
   signTransaction: (
     transactionXdr: string,
-    options: { networkPassphrase: string },
+    options: { networkPassphrase: string; address?: string },
   ) => Promise<FreighterSignTransactionResult>;
 }
 
