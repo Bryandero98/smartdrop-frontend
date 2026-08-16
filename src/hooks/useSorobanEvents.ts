@@ -24,7 +24,9 @@ const CREDIT_EVENT_TOPICS = new Set(["update_credits"]);
 /**
  * Polls the Soroban RPC every 5 s for contract events and immediately
  * invalidates React Query cache entries when relevant events are detected,
- * rather than waiting for the next scheduled refetch.
+ * rather than waiting for the next scheduled refetch. Covers pool events
+ * (POOLS), position events (USER_POSITION), and credit-update events
+ * (USER_CREDITS) for the connected wallet.
  */
 export function useSorobanEvents(
   contractIds: string[],
