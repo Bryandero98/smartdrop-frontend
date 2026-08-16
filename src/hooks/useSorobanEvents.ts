@@ -75,6 +75,7 @@ export function useSorobanEvents(
 
           let hasPoolEvent = false;
           let hasUserEvent = false;
+          let hasCreditEvent = false;
 
           for (const evt of response.events) {
             if (!evt.inSuccessfulContractCall) continue;
