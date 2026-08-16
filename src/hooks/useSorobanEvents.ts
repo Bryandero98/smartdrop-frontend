@@ -15,6 +15,11 @@ export interface SorobanEventsRpc {
 }
 
 const USER_EVENT_TOPICS = new Set(["lock_assets", "unlock_assets"]);
+// `update_credits` carries the user's address at the same topic position as
+// lock_assets/unlock_assets (topic[1]) — kept as its own set, rather than
+// folded into USER_EVENT_TOPICS, because it drives a different query key
+// (USER_CREDITS, not USER_POSITION).
+const CREDIT_EVENT_TOPICS = new Set(["update_credits"]);
 
 /**
  * Polls the Soroban RPC every 5 s for contract events and immediately
