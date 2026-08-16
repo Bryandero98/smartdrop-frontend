@@ -98,6 +98,11 @@ export function useSorobanEvents(
               queryKey: [QUERY_KEYS.USER_POSITION],
             });
           }
+          if (hasCreditEvent) {
+            queryClient.invalidateQueries({
+              queryKey: [QUERY_KEYS.USER_CREDITS],
+            });
+          }
           if (hasPoolEvent) {
             queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.POOLS] });
           }
