@@ -272,4 +272,24 @@ describe("StellarWalletContext visibilitychange refresh", () => {
     expect(screen.getByTestId("is-mismatch").textContent).toBe("false");
   });
 
+  it("still resets networkName to null on a Freighter error response (not a hang) during visibilitychange", async () => {
+    freighterMock.getNetworkDetails.mockResolvedValueOnce(TESTNET_DETAILS);
+
+    renderHarness();
+    await connectAndSettle();
+    expect(screen.getByTestId("network-name").textContent).toBe("TESTNET");
+
+    // A definite, immediate error response — not a hang — exercising the
+    // pre-existing `details.error` branch alongside the new timeout path.
+    freighterMock.getNetworkDetails.mockResolvedValueOnce({
+      error: "User rejected access",
+    });
+
+    fireVisibilityChange();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+
+    expect(screen.getByTestId("network-name").textContent).toBe("null");
+  });
 });
