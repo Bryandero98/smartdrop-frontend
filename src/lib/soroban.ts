@@ -297,8 +297,24 @@ export async function simulateLockAssets(
   };
 }
 
+/**
+ * Unwraps Freighter's signTransaction response, verifying that the account
+ * which actually signed (`result.signerAddress`) is the account SmartDrop
+ * believes is connected (`expectedSigner`). Passing `address` in the
+ * request (see the three call sites below) lets Freighter itself refuse a
+ * mismatched-account attempt before ever producing a signature, but that's
+ * a request the extension can choose to honor or not — this is the
+ * client-side backstop that fails fast with a clear error instead of
+ * letting a signer mismatch surface only as an opaque on-chain
+ * authorization failure after a real transaction submission (#139).
+ *
+ * Older Freighter responses (or the legacy bare-string return shape) may
+ * not include `signerAddress` at all — nothing to check against in that
+ * case, so this only rejects when the field is present and disagrees.
+ */
 function getSignedTransactionXdr(
   result: FreighterSignTransactionResult,
+  expectedSigner: string,
 ): string {
   if (typeof result === 'string') {
     return result;
@@ -309,6 +325,12 @@ function getSignedTransactionXdr(
       typeof result.error === 'string'
         ? result.error
         : 'Freighter failed to sign the transaction',
+    );
+  }
+
+  if (result.signerAddress && result.signerAddress !== expectedSigner) {
+    throw new SecurityError(
+      `Transaction signing was blocked because it was signed by ${result.signerAddress}, not the connected account ${expectedSigner}. Please sign with the correct Freighter account.`,
     );
   }
 
