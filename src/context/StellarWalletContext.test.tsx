@@ -184,4 +184,21 @@ describe("StellarWalletContext visibilitychange refresh", () => {
     expect(freighterMock.getNetworkDetails).not.toHaveBeenCalled();
   });
 
+  it("stops refreshing on visibilitychange once the provider has unmounted", async () => {
+    freighterMock.getNetworkDetails.mockResolvedValue(TESTNET_DETAILS);
+
+    const { unmount } = renderHarness();
+    await connectAndSettle();
+    expect(freighterMock.getNetworkDetails).toHaveBeenCalledTimes(1);
+
+    unmount();
+
+    fireVisibilityChange();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(FREIGHTER_CONNECT_TIMEOUT_MS);
+    });
+
+    expect(freighterMock.getNetworkDetails).toHaveBeenCalledTimes(1);
+  });
+
 });
