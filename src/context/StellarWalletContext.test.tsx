@@ -172,4 +172,16 @@ describe("StellarWalletContext visibilitychange refresh", () => {
     expect(screen.getByTestId("network-name").textContent).toBe("null");
   });
 
+  it("does not call getNetworkDetails on visibilitychange when no wallet is connected", async () => {
+    renderHarness();
+    // Deliberately not connecting — publicKey stays null.
+
+    fireVisibilityChange();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(FREIGHTER_CONNECT_TIMEOUT_MS);
+    });
+
+    expect(freighterMock.getNetworkDetails).not.toHaveBeenCalled();
+  });
+
 });
