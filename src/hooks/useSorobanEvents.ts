@@ -88,6 +88,9 @@ export function useSorobanEvents(
             if (USER_EVENT_TOPICS.has(action) && userAddr === publicKey) {
               hasUserEvent = true;
             }
+            if (CREDIT_EVENT_TOPICS.has(action) && userAddr === publicKey) {
+              hasCreditEvent = true;
+            }
           }
 
           if (hasUserEvent) {
