@@ -226,4 +226,32 @@ describe("StellarWalletContext visibilitychange refresh", () => {
     }
   });
 
+  it("gives a later visibilitychange dispatch its own fresh timeout window after an earlier one times out", async () => {
+    freighterMock.getNetworkDetails.mockResolvedValueOnce(TESTNET_DETAILS);
+
+    renderHarness();
+    await connectAndSettle();
+
+    // First dispatch hangs and times out.
+    freighterMock.getNetworkDetails.mockImplementation(
+      () => new Promise(() => {}),
+    );
+    fireVisibilityChange();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(FREIGHTER_CONNECT_TIMEOUT_MS);
+    });
+    expect(screen.getByTestId("network-name").textContent).toBe("null");
+
+    // A later dispatch, well after the first one's deadline has already
+    // passed, gets its own fresh deadline computed from Date.now() at fire
+    // time — not a stale one inherited from the first call — so a prompt
+    // response inside the new window still updates state normally.
+    freighterMock.getNetworkDetails.mockResolvedValueOnce(PUBLIC_DETAILS);
+    fireVisibilityChange();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    expect(screen.getByTestId("network-name").textContent).toBe("PUBLIC");
+  });
+
 });
