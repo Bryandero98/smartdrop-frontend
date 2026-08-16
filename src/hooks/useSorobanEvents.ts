@@ -15,11 +15,18 @@ export interface SorobanEventsRpc {
 }
 
 const USER_EVENT_TOPICS = new Set(["lock_assets", "unlock_assets"]);
+// `update_credits` carries the user's address at the same topic position as
+// lock_assets/unlock_assets (topic[1]) — kept as its own set, rather than
+// folded into USER_EVENT_TOPICS, because it drives a different query key
+// (USER_CREDITS, not USER_POSITION).
+const CREDIT_EVENT_TOPICS = new Set(["update_credits"]);
 
 /**
  * Polls the Soroban RPC every 5 s for contract events and immediately
  * invalidates React Query cache entries when relevant events are detected,
- * rather than waiting for the next scheduled refetch.
+ * rather than waiting for the next scheduled refetch. Covers pool events
+ * (POOLS), position events (USER_POSITION), and credit-update events
+ * (USER_CREDITS) for the connected wallet.
  */
 export function useSorobanEvents(
   contractIds: string[],
@@ -68,6 +75,7 @@ export function useSorobanEvents(
 
           let hasPoolEvent = false;
           let hasUserEvent = false;
+          let hasCreditEvent = false;
 
           for (const evt of response.events) {
             if (!evt.inSuccessfulContractCall) continue;
@@ -80,11 +88,19 @@ export function useSorobanEvents(
             if (USER_EVENT_TOPICS.has(action) && userAddr === publicKey) {
               hasUserEvent = true;
             }
+            if (CREDIT_EVENT_TOPICS.has(action) && userAddr === publicKey) {
+              hasCreditEvent = true;
+            }
           }
 
           if (hasUserEvent) {
             queryClient.invalidateQueries({
               queryKey: [QUERY_KEYS.USER_POSITION],
+            });
+          }
+          if (hasCreditEvent) {
+            queryClient.invalidateQueries({
+              queryKey: [QUERY_KEYS.USER_CREDITS],
             });
           }
           if (hasPoolEvent) {
