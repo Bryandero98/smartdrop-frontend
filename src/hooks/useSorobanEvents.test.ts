@@ -187,6 +187,53 @@ describe("useSorobanEvents", () => {
     });
   });
 
+  it("does not invalidate USER_CREDITS for an update_credits event belonging to a different address", async () => {
+    const invalidateQueries = vi.spyOn(queryClient, "invalidateQueries");
+
+    const OTHER_KEY =
+      "GBVVJJPQKIFE3IPQHBKUQO3SGDTCQJLWBZUOYJKPYLSJ6HI2IQJZ3NP";
+
+    const creditEvent = {
+      inSuccessfulContractCall: true,
+      topic: [xdr.ScVal.scvSymbol("update_credits"), addrScVal(OTHER_KEY)],
+      contractId: TEST_CONTRACT_ID,
+      value: xdr.ScVal.scvVoid(),
+      txHash: "deadbeef",
+      ledger: 1001,
+      ledgerClosedAt: new Date().toISOString(),
+      pagingToken: "1001-0-0",
+      id: "1001-0-0",
+      type: "contract",
+    };
+
+    const mockRpc: SorobanEventsRpc = {
+      getLatestLedger: vi.fn().mockResolvedValue({ sequence: 1000 }),
+      getEvents: vi.fn().mockResolvedValue({
+        events: [creditEvent],
+        latestLedger: 1001,
+      }),
+    };
+
+    const wrapper = ({ children }: { children: React.ReactNode }) =>
+      createElement(QueryClientProvider, { client: queryClient }, children);
+
+    renderHook(
+      () =>
+        useSorobanEvents([TEST_CONTRACT_ID], ["update_credits"], mockRpc),
+      { wrapper }
+    );
+
+    await vi.advanceTimersByTimeAsync(0);
+    await vi.advanceTimersByTimeAsync(5000);
+
+    const creditCalls = invalidateQueries.mock.calls.filter((call) =>
+      (call[0] as { queryKey: string[] })?.queryKey?.includes(
+        QUERY_KEYS.USER_CREDITS
+      )
+    );
+    expect(creditCalls).toHaveLength(0);
+  });
+
   it("does not invalidate USER_POSITION for events belonging to a different address", async () => {
     const invalidateQueries = vi.spyOn(queryClient, "invalidateQueries");
 
