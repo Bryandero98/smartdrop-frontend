@@ -234,6 +234,66 @@ describe("useSorobanEvents", () => {
     expect(creditCalls).toHaveLength(0);
   });
 
+  it("invalidates both USER_POSITION and USER_CREDITS independently when both event types arrive in the same poll", async () => {
+    const invalidateQueries = vi.spyOn(queryClient, "invalidateQueries");
+
+    const lockEvent = {
+      inSuccessfulContractCall: true,
+      topic: [
+        xdr.ScVal.scvSymbol("lock_assets"),
+        addrScVal(TEST_PUBLIC_KEY),
+      ],
+      contractId: TEST_CONTRACT_ID,
+      value: xdr.ScVal.scvVoid(),
+      txHash: "deadbeef",
+      ledger: 1001,
+      ledgerClosedAt: new Date().toISOString(),
+      pagingToken: "1001-0-0",
+      id: "1001-0-0",
+      type: "contract",
+    };
+    const creditEvent = {
+      ...lockEvent,
+      topic: [
+        xdr.ScVal.scvSymbol("update_credits"),
+        addrScVal(TEST_PUBLIC_KEY),
+      ],
+      id: "1001-0-1",
+      pagingToken: "1001-0-1",
+    };
+
+    const mockRpc: SorobanEventsRpc = {
+      getLatestLedger: vi.fn().mockResolvedValue({ sequence: 1000 }),
+      getEvents: vi.fn().mockResolvedValue({
+        events: [lockEvent, creditEvent],
+        latestLedger: 1001,
+      }),
+    };
+
+    const wrapper = ({ children }: { children: React.ReactNode }) =>
+      createElement(QueryClientProvider, { client: queryClient }, children);
+
+    renderHook(
+      () =>
+        useSorobanEvents(
+          [TEST_CONTRACT_ID],
+          ["lock_assets", "unlock_assets", "update_credits"],
+          mockRpc
+        ),
+      { wrapper }
+    );
+
+    await vi.advanceTimersByTimeAsync(0);
+    await vi.advanceTimersByTimeAsync(5000);
+
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: [QUERY_KEYS.USER_POSITION],
+    });
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: [QUERY_KEYS.USER_CREDITS],
+    });
+  });
+
   it("does not invalidate USER_POSITION for events belonging to a different address", async () => {
     const invalidateQueries = vi.spyOn(queryClient, "invalidateQueries");
 
