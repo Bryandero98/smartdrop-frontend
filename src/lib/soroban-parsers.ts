@@ -69,6 +69,21 @@ export function bigintToDisplayAmount(raw: unknown): string {
  *
  * Nested asset object { code, issuer, is_native } is also accepted.
  * Throws on missing required structure so the caller can skip with a warning.
+ *
+ * ## Pool `id` stability guarantee
+ *
+ * The derived `id` is only guaranteed stable when it comes from one of the
+ * following fields (checked in priority order):
+ *
+ *   1. `id` / `pool_id`  — explicit on-chain identifier; most stable.
+ *   2. `contract_address` / `address` / `pool_address` — stable on-chain
+ *      address, independent of the factory's return-order.
+ *   3. Array index fallback (`String(fallbackIndex)`) — **NOT stable**.
+ *      This path only fires when the contract returns a pool entry with none
+ *      of the above fields populated.  It is treated as a signal of an
+ *      unexpected/malformed contract response and a `console.warn` is emitted.
+ *      A `/farm/[poolId]` URL built from this id may silently resolve to a
+ *      different pool if the factory ever returns pools in a different order.
  */
 export function parsePoolEntry(
   entry: Record<string, unknown>,
@@ -94,9 +109,27 @@ export function parsePoolEntry(
   const contractAddress = decodeScString(
     entry['contract_address'] ?? entry['address'] ?? entry['pool_address'] ?? '',
   );
-  const id =
-    decodeScString(entry['id'] ?? entry['pool_id'] ?? contractAddress) ||
-    String(fallbackIndex);
+
+  // Derive a stable pool id in priority order:
+  //   1. explicit id / pool_id  (strongest — on-chain identity)
+  //   2. contract_address       (stable on-chain address, order-independent)
+  //   3. array index fallback   (unstable — emits a distinct warning)
+  const explicitId = decodeScString(entry['id'] ?? entry['pool_id'] ?? '');
+  let id: string;
+  if (explicitId) {
+    id = explicitId;
+  } else if (contractAddress) {
+    id = contractAddress;
+  } else {
+    console.warn(
+      `[SmartDrop] parsePoolEntry: pool at index ${fallbackIndex} has no ` +
+        `id/pool_id/contract_address — falling back to its array position, ` +
+        `which is NOT stable across factory pool-ordering changes. ` +
+        `Its /farm/[poolId] URL may silently point to a different pool later. ` +
+        `This is likely a malformed contract response and should be investigated.`,
+    );
+    id = String(fallbackIndex);
+  }
 
   return {
     id,
