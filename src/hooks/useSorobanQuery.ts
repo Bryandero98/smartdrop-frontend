@@ -38,6 +38,23 @@ export const usePools = () => {
 };
 
 /**
+ * Hook to fetch a pool's top depositors, replacing the one-shot
+ * getPoolDepositors() useEffect PoolDetailClient used to call directly
+ * (#143) — this way depositor data also refreshes on an interval instead
+ * of being frozen at mount for the lifetime of the page view.
+ */
+export const usePoolDepositors = (poolId: string, limit: number = 20) => {
+  return useQuery({
+    queryKey: ['poolDepositors', poolId, limit],
+    queryFn: () => sorobanService.getPoolDepositors(poolId, limit),
+    enabled: !!poolId,
+    staleTime: 30000,
+    refetchInterval: 60000,
+    retry: 2,
+  });
+};
+
+/**
  * Hook to fetch user position for a specific pool
  */
 export const useUserPosition = (poolId: string, enabled: boolean = true) => {
