@@ -29,10 +29,14 @@ import {
   Tr,
   useDisclosure,
 } from "@chakra-ui/react";
-import { formatCredits, sorobanService } from "@/lib/soroban";
+import { formatCredits } from "@/lib/soroban";
 import TvlChart from "@/components/TvlChart/TvlChart";
 import { useLockFlow } from "@/hooks/useLockFlow";
-import { usePools, useStellarBalance } from "@/hooks/useSorobanQuery";
+import {
+  usePoolDepositors,
+  usePools,
+  useStellarBalance,
+} from "@/hooks/useSorobanQuery";
 import { useStellarWallet } from "@/context/StellarWalletContext";
 import ConnectWalletButton from "@/components/ConnectWalletButton/ConnectWalletButton";
 import { useOwnConnectButton } from "@/context/OwnConnectButtonContext";
@@ -86,8 +90,6 @@ function StatCard({
 }
 
 export default function PoolDetailClient({ poolId }: { poolId: string }) {
-  const [depositors, setDepositors] = useState<Depositor[]>([]);
-  const [depositorsLoading, setDepositorsLoading] = useState(true);
   const [rawAmount, setRawAmount] = useState("0");
 
   // Shares the same cache/staleTime/refetchInterval as the Farm page's
@@ -141,24 +143,9 @@ export default function PoolDetailClient({ poolId }: { poolId: string }) {
     walletApi,
   });
 
-  useEffect(() => {
-    let cancelled = false;
-    setDepositorsLoading(true);
-    sorobanService
-      .getPoolDepositors(poolId, 20)
-      .then((list) => {
-        if (!cancelled) {
-          setDepositors(list);
-          setDepositorsLoading(false);
-        }
-      })
-      .catch(() => {
-        if (!cancelled) setDepositorsLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [poolId]);
+  const { data: depositorsData, isLoading: depositorsLoading } =
+    usePoolDepositors(poolId, 20);
+  const depositors: Depositor[] = depositorsData ?? [];
 
   const handleModalClose = () => {
     if (isDepositPending(flow.step)) return;
