@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import NextLink from "next/link";
 import {
   Alert,
@@ -29,11 +29,14 @@ import {
   Tr,
   useDisclosure,
 } from "@chakra-ui/react";
-import { formatCredits, sorobanService } from "@/lib/soroban";
-import type { PoolInfo } from "@/lib/soroban";
+import { formatCredits } from "@/lib/soroban";
 import TvlChart from "@/components/TvlChart/TvlChart";
 import { useLockFlow } from "@/hooks/useLockFlow";
-import { useStellarBalance } from "@/hooks/useSorobanQuery";
+import {
+  usePoolDepositors,
+  usePools,
+  useStellarBalance,
+} from "@/hooks/useSorobanQuery";
 import { useStellarWallet } from "@/context/StellarWalletContext";
 import ConnectWalletButton from "@/components/ConnectWalletButton/ConnectWalletButton";
 import { useOwnConnectButton } from "@/context/OwnConnectButtonContext";
@@ -87,12 +90,28 @@ function StatCard({
 }
 
 export default function PoolDetailClient({ poolId }: { poolId: string }) {
-  const [pool, setPool] = useState<PoolInfo | null>(null);
-  const [depositors, setDepositors] = useState<Depositor[]>([]);
-  const [poolLoading, setPoolLoading] = useState(true);
-  const [depositorsLoading, setDepositorsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [rawAmount, setRawAmount] = useState("0");
+
+  // Shares the same cache/staleTime/refetchInterval as the Farm page's
+  // pool list instead of an independent, uncached getFactoryPools() call
+  // — visiting /farm then a pool's detail page no longer re-fetches the
+  // same data, and stats now refresh on usePools()'s interval instead of
+  // being frozen at mount (#143). Deriving `pool` this way is arguably
+  // more correct than the old one-shot check (it recomputes if the pool
+  // later disappears from a factory poll), but is a behavior change worth
+  // calling out: previously a pool removed from the factory after initial
+  // load stayed displayed until the user navigated away and back.
+  const { data: pools, isLoading: poolLoading, isError: poolsError } = usePools();
+  const pool = useMemo(
+    () => pools?.find((p) => p.id === poolId) ?? null,
+    [pools, poolId],
+  );
+  const notFound = !poolLoading && !poolsError && !pool;
+  const error = poolsError
+    ? "Failed to load pool data."
+    : notFound
+      ? "Pool not found."
+      : null;
 
   const { isOpen, onOpen, onClose } = useDisclosure();
   const { publicKey, walletApi, isConnected, isNetworkMismatch } =
@@ -124,47 +143,9 @@ export default function PoolDetailClient({ poolId }: { poolId: string }) {
     walletApi,
   });
 
-  useEffect(() => {
-    let cancelled = false;
-    setPoolLoading(true);
-    sorobanService
-      .getFactoryPools()
-      .then((pools) => {
-        if (cancelled) return;
-        const found = pools.find((p) => p.id === poolId) ?? null;
-        setPool(found);
-        if (!found) setError("Pool not found.");
-        setPoolLoading(false);
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setError("Failed to load pool data.");
-          setPoolLoading(false);
-        }
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [poolId]);
-
-  useEffect(() => {
-    let cancelled = false;
-    setDepositorsLoading(true);
-    sorobanService
-      .getPoolDepositors(poolId, 20)
-      .then((list) => {
-        if (!cancelled) {
-          setDepositors(list);
-          setDepositorsLoading(false);
-        }
-      })
-      .catch(() => {
-        if (!cancelled) setDepositorsLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [poolId]);
+  const { data: depositorsData, isLoading: depositorsLoading } =
+    usePoolDepositors(poolId, 20);
+  const depositors: Depositor[] = depositorsData ?? [];
 
   const handleModalClose = () => {
     if (isDepositPending(flow.step)) return;
