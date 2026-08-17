@@ -156,3 +156,75 @@ describe("PoolDetailClient refreshes stats on usePools()'s interval (#143)", () 
     }
   });
 });
+
+describe("PoolDetailClient preserves loading/not-found behavior after migration (#143)", () => {
+  it("shows loading skeletons while usePools() is still pending", async () => {
+    let resolvePools!: (pools: PoolInfo[]) => void;
+    vi.spyOn(sorobanService, "getFactoryPools").mockReturnValue(
+      new Promise((resolve) => {
+        resolvePools = resolve;
+      }),
+    );
+
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    renderDetail("pool-xlm", client);
+
+    // Breadcrumb falls back to a truncated poolId while loading, not the
+    // pool's asset code (which isn't known yet).
+    expect(screen.getByText("pool-xlm…")).toBeTruthy();
+    expect(screen.queryByText("XLM Pool")).toBeNull();
+
+    await act(async () => {
+      resolvePools([makePool()]);
+      await Promise.resolve();
+    });
+  });
+
+  it('shows "Pool not found." when usePools() resolves without the requested poolId', async () => {
+    vi.spyOn(sorobanService, "getFactoryPools").mockResolvedValue([
+      makePool({ id: "some-other-pool" }),
+    ]);
+
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    renderDetail("pool-xlm", client);
+
+    expect(await screen.findByText("Pool not found.")).toBeTruthy();
+    expect(screen.getByRole("link", { name: /back to farm/i })).toBeTruthy();
+    // The stats/detail layout isn't rendered in the error state.
+    expect(screen.queryByText("Daily Rate")).toBeNull();
+  });
+
+  it('shows "Failed to load pool data." when the pools fetch itself fails', async () => {
+    // usePools() hard-codes retry: 3 with exponential backoff, so exhausting
+    // it before isError flips takes several real seconds — fake timers,
+    // advanced until nothing is pending, cover the whole retry chain fast.
+    vi.useFakeTimers();
+    try {
+      vi.spyOn(sorobanService, "getFactoryPools").mockRejectedValue(
+        new Error("RPC unreachable"),
+      );
+
+      const client = new QueryClient({
+        defaultOptions: { queries: { retry: false } },
+      });
+      renderDetail("pool-xlm", client);
+
+      // retryDelay is min(1000 * 2^attempt, 30000) for 3 retries:
+      // 1000 + 2000 + 4000 = 7000ms until isError flips. Advancing in a
+      // bounded step (rather than runAllTimersAsync, which never
+      // terminates here — usePools()/usePoolDepositors' refetchInterval
+      // keeps rescheduling) covers the whole chain without hanging.
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(8000);
+      });
+
+      expect(screen.getByText("Failed to load pool data.")).toBeTruthy();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
