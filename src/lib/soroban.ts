@@ -1046,7 +1046,7 @@ export class SorobanService {
             confirmation.status === 'TIMEOUT'
               ? 'Transaction confirmation is taking longer than expected.'
               : getContractErrorMessage(confirmation.errorCode) ??
-                `Transaction ${submissionResult.hash} failed on-chain`,
+                genericOnChainFailureMessage(submissionResult.hash, confirmation.errorCode),
         };
       }
 
