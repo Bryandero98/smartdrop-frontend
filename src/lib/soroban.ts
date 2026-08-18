@@ -1286,13 +1286,32 @@ export class SorobanService {
         };
       }
 
+      const confirmation = await this.pollTransactionStatus(submissionResult.hash);
+      if (confirmation.status !== 'SUCCESS') {
+        return {
+          success: false,
+          transactionHash: submissionResult.hash,
+          hash: submissionResult.hash,
+          status: confirmation.status,
+          resultXdr: confirmation.resultXdr,
+          errorCode: confirmation.errorCode,
+          error:
+            confirmation.status === 'TIMEOUT'
+              ? 'Transaction confirmation is taking longer than expected.'
+              : getContractErrorMessage(confirmation.errorCode) ??
+                genericOnChainFailureMessage(submissionResult.hash, confirmation.errorCode),
+        };
+      }
+
       return {
         success: true,
         transactionHash: submissionResult.hash,
         hash: submissionResult.hash,
+        status: confirmation.status,
+        resultXdr: confirmation.resultXdr,
         gasUsed: simulation.minResourceFee || '0',
       };
-      
+
     } catch (error) {
       console.error('Error setting boost:', error);
       if (error instanceof SecurityError) {
