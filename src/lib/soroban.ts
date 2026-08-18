@@ -507,7 +507,22 @@ function extractContractErrorCode(tx: unknown, resultXdr?: string): string | und
 
 export function getContractErrorMessage(errorCode?: string): string | undefined {
   const normalized = normalizeContractErrorCode(errorCode);
-  return normalized ? CONTRACT_ERROR_MESSAGES[normalized] : undefined;
+  if (!normalized) return undefined;
+
+  const message = CONTRACT_ERROR_MESSAGES[normalized];
+  if (!message) {
+    console.warn('[SmartDrop] Unmapped contract error code:', normalized);
+  }
+  return message;
+}
+
+/** `getContractErrorMessage(errorCode) ?? this` — always includes the raw
+ * code (when one was extracted) so a user or support agent has something
+ * concrete to reference, even for a still-unmapped code (#146). */
+function genericOnChainFailureMessage(hash: string, errorCode?: string): string {
+  return errorCode
+    ? `Transaction ${hash} failed on-chain (code ${errorCode})`
+    : `Transaction ${hash} failed on-chain`;
 }
 
 // ── Transaction signing safety ───────────────────────────────────────────────
