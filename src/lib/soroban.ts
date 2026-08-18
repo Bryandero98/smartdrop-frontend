@@ -347,8 +347,28 @@ type PollTransactionResult = {
   errorCode?: string;
 };
 
+// Codes 2-9 are sourced directly from the deployed farming-pool contract's
+// `PoolError` enum (SmartDropLabs/smartdrop-contracts,
+// soroban/contracts/farming-pool/src/types.rs) — the authoritative,
+// currently-deployed error set, rather than a guess (#146). Code '1'
+// predates this table and is left as-is: the contract's own code 1 is
+// `AlreadyInitialized`, which doesn't match "Assets are still locked" — that
+// specific failure (`unlock_assets` before `unlock_ledger`) is actually a
+// plain Rust `assert!` in the current contract, not a typed `PoolError`, so
+// it wouldn't surface via this numeric-code path at all. Left unchanged
+// rather than silently reinterpreted, since there's no way to confirm here
+// whether it reflects an intentional mapping against an older contract
+// build or a stale assumption; worth a follow-up with the contracts team.
 const CONTRACT_ERROR_MESSAGES: Record<string, string> = {
   '1': 'Assets are still locked',
+  '2': 'The pool has not been initialized yet',
+  '3': 'Invalid credit rate configuration',
+  '4': 'Invalid boost multiplier configuration',
+  '5': 'This wallet is not on the whitelist for this pool',
+  '6': 'Amount is below the minimum stake for this pool',
+  '7': 'This action requires the pool to be paused first',
+  '8': 'No active stake or locked position was found for this wallet',
+  '9': 'This pool is currently paused',
 };
 
 function sleep(ms: number): Promise<void> {
@@ -487,7 +507,22 @@ function extractContractErrorCode(tx: unknown, resultXdr?: string): string | und
 
 export function getContractErrorMessage(errorCode?: string): string | undefined {
   const normalized = normalizeContractErrorCode(errorCode);
-  return normalized ? CONTRACT_ERROR_MESSAGES[normalized] : undefined;
+  if (!normalized) return undefined;
+
+  const message = CONTRACT_ERROR_MESSAGES[normalized];
+  if (!message) {
+    console.warn('[SmartDrop] Unmapped contract error code:', normalized);
+  }
+  return message;
+}
+
+/** `getContractErrorMessage(errorCode) ?? this` — always includes the raw
+ * code (when one was extracted) so a user or support agent has something
+ * concrete to reference, even for a still-unmapped code (#146). */
+function genericOnChainFailureMessage(hash: string, errorCode?: string): string {
+  return errorCode
+    ? `Transaction ${hash} failed on-chain (code ${errorCode})`
+    : `Transaction ${hash} failed on-chain`;
 }
 
 // ── Transaction signing safety ───────────────────────────────────────────────
@@ -1011,7 +1046,7 @@ export class SorobanService {
             confirmation.status === 'TIMEOUT'
               ? 'Transaction confirmation is taking longer than expected.'
               : getContractErrorMessage(confirmation.errorCode) ??
-                `Transaction ${submissionResult.hash} failed on-chain`,
+                genericOnChainFailureMessage(submissionResult.hash, confirmation.errorCode),
         };
       }
 
@@ -1154,7 +1189,7 @@ export class SorobanService {
             confirmation.status === 'TIMEOUT'
               ? 'Transaction confirmation is taking longer than expected.'
               : getContractErrorMessage(confirmation.errorCode) ??
-                `Transaction ${submissionResult.hash} failed on-chain`,
+                genericOnChainFailureMessage(submissionResult.hash, confirmation.errorCode),
         };
       }
 
@@ -1251,13 +1286,32 @@ export class SorobanService {
         };
       }
 
+      const confirmation = await this.pollTransactionStatus(submissionResult.hash);
+      if (confirmation.status !== 'SUCCESS') {
+        return {
+          success: false,
+          transactionHash: submissionResult.hash,
+          hash: submissionResult.hash,
+          status: confirmation.status,
+          resultXdr: confirmation.resultXdr,
+          errorCode: confirmation.errorCode,
+          error:
+            confirmation.status === 'TIMEOUT'
+              ? 'Transaction confirmation is taking longer than expected.'
+              : getContractErrorMessage(confirmation.errorCode) ??
+                genericOnChainFailureMessage(submissionResult.hash, confirmation.errorCode),
+        };
+      }
+
       return {
         success: true,
         transactionHash: submissionResult.hash,
         hash: submissionResult.hash,
+        status: confirmation.status,
+        resultXdr: confirmation.resultXdr,
         gasUsed: simulation.minResourceFee || '0',
       };
-      
+
     } catch (error) {
       console.error('Error setting boost:', error);
       if (error instanceof SecurityError) {

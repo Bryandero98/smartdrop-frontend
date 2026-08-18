@@ -846,10 +846,49 @@ describe("SorobanService RPC writes", () => {
       success: true,
       transactionHash: "boost-hash",
       hash: "boost-hash",
+      status: "SUCCESS",
       gasUsed: "777",
     });
     expect(walletApi.signTransaction).toHaveBeenCalledTimes(1);
     expect(rpcServer.sendTransaction).toHaveBeenCalledTimes(1);
+    expect(rpcServer.getTransaction).toHaveBeenCalledWith("boost-hash");
+  });
+
+  it("setBoost returns decoded contract error details when confirmation fails (#146)", async () => {
+    const { service, rpcServer } = makeService();
+    mockAssembleTransactionPassthrough();
+    rpcServer.simulateTransaction.mockResolvedValue({
+      result: { auth: [makeAuthEntry("set_boost")] },
+      minResourceFee: "777",
+    });
+    rpcServer.sendTransaction.mockResolvedValue({
+      status: "PENDING",
+      hash: "failed-boost-hash",
+    });
+    rpcServer.getTransaction.mockResolvedValue({
+      status: "FAILED",
+      errorResult: "Host function failed with contract code: 5",
+    });
+    const walletApi = {
+      signTransaction: vi.fn(async (xdrEnvelope: string) => xdrEnvelope),
+    };
+
+    const result = await service.setBoost(
+      POOL_ID,
+      USER_PUBLIC_KEY,
+      40,
+      walletApi,
+    );
+
+    expect(result).toMatchObject({
+      success: false,
+      transactionHash: "failed-boost-hash",
+      hash: "failed-boost-hash",
+      status: "FAILED",
+      errorCode: "5",
+      error: "This wallet is not on the whitelist for this pool",
+    });
+    expect(rpcServer.getTransaction).toHaveBeenCalledWith("failed-boost-hash");
   });
 
   it("setBoost rejects invalid allocation percentages before RPC calls", async () => {
