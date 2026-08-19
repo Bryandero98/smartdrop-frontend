@@ -115,7 +115,12 @@ export const useLockAssetsFeePreview = (args: {
   amount?: string;
 }) => {
   const amount = args.amount?.trim() ?? '';
-  const [debouncedAmount, setDebouncedAmount] = useState(amount);
+  // Starts empty (not seeded from `amount`) so a caller that mounts with a
+  // non-empty amount already still goes through the debounce window once,
+  // the same as any other change — matching `useLeaderboard`'s
+  // `searchQuery`/`searchInput` split, which starts `searchQuery` at `""`
+  // rather than at the initial `searchInput` value.
+  const [debouncedAmount, setDebouncedAmount] = useState('');
 
   useEffect(() => {
     const id = setTimeout(
