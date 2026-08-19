@@ -97,31 +97,66 @@ export const useStellarBalance = (publicKey?: string) => {
   });
 };
 
+// Matches the debounce pattern already used for search input elsewhere in
+// this codebase (`useLeaderboard`'s `SEARCH_DEBOUNCE_MS`).
+const LOCK_ASSETS_FEE_PREVIEW_DEBOUNCE_MS = 350;
+
+/**
+ * Debounced so a keystroke burst in the deposit amount field doesn't fire a
+ * `simulateTransaction` RPC round trip per keystroke (#134) — the query
+ * only keys/fires on `amount` once it has stopped changing for
+ * `LOCK_ASSETS_FEE_PREVIEW_DEBOUNCE_MS`. Debouncing here, inside the hook,
+ * means every caller gets the fix automatically rather than each call site
+ * having to remember to debounce its own input state.
+ */
 export const useLockAssetsFeePreview = (args: {
   publicKey?: string | null;
   poolContractId?: string | null;
   amount?: string;
 }) => {
   const amount = args.amount?.trim() ?? '';
-  const numericAmount = Number(amount);
+  const [debouncedAmount, setDebouncedAmount] = useState(amount);
 
-  return useQuery({
-    queryKey: ['lockAssetsFeePreview', args.publicKey, args.poolContractId, amount],
+  useEffect(() => {
+    const id = setTimeout(
+      () => setDebouncedAmount(amount),
+      LOCK_ASSETS_FEE_PREVIEW_DEBOUNCE_MS,
+    );
+    return () => clearTimeout(id);
+  }, [amount]);
+
+  const numericAmount = Number(debouncedAmount);
+  // A live amount that hasn't settled into debouncedAmount yet is not
+  // reflected in the query at all (queryKey/queryFn/enabled all read
+  // debouncedAmount below) — surface that as "still fetching" so UI keyed
+  // off isFetching shows a pending state for the whole debounce window,
+  // not just the network request that follows it.
+  const isDebouncing = amount !== debouncedAmount;
+
+  const query = useQuery({
+    queryKey: [
+      'lockAssetsFeePreview',
+      args.publicKey,
+      args.poolContractId,
+      debouncedAmount,
+    ],
     queryFn: () =>
       simulateLockAssets({
         publicKey: args.publicKey!,
         poolContractId: args.poolContractId!,
-        amount,
+        amount: debouncedAmount,
       }),
     enabled:
       !!args.publicKey &&
       !!args.poolContractId &&
-      !!amount &&
+      !!debouncedAmount &&
       Number.isFinite(numericAmount) &&
       numericAmount > 0,
     staleTime: 10000,
     retry: 1,
   });
+
+  return { ...query, isFetching: query.isFetching || isDebouncing };
 };
 
 /**
