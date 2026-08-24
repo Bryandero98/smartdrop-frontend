@@ -234,15 +234,36 @@ export function StellarWalletProvider({ children }: { children: ReactNode }) {
 
     const handleVisibilityChange = () => {
       if (document.visibilityState === "visible") {
-        // Bounded the same way connect() bounds every Freighter call — an
-        // unresponsive extension (crashed background worker, hung native-
-        // messaging bridge) must not leave networkName/isNetworkMismatch
-        // frozen at a stale pre-refresh value forever. refreshNetworkDetails
-        // already resets networkName to null on any caught error, including
-        // this timeout, so no extra handling is needed here beyond
-        // preventing the rejection from surfacing as an unhandled rejection.
         const deadlineMs = Date.now() + FREIGHTER_CONNECT_TIMEOUT_MS;
+
+        // Refresh network details (existing behavior)
         void refreshNetworkDetails(undefined, deadlineMs).catch(() => {});
+
+        // Detect Freighter account switch (#67): re-read the active address
+        // and compare against the publicKey we're currently using. If the
+        // user switched accounts inside the extension while this tab was
+        // backgrounded, update publicKey so the UI stays in sync.
+        void (async () => {
+          try {
+            const freighter = await import("@stellar/freighter-api");
+            const addr = await withFreighterConnectTimeout(
+              freighter.getAddress(),
+              deadlineMs,
+            );
+            if (addr.error || !addr.address) {
+              // Extension revoked access or became unreachable — disconnect
+              // so the UI doesn't show stale state.
+              disconnect();
+              return;
+            }
+            if (addr.address !== publicKey) {
+              setPublicKey(addr.address);
+            }
+          } catch {
+            // Timeout or extension error — leave state as-is, will retry
+            // on next visibility change.
+          }
+        })();
       }
     };
 
@@ -250,7 +271,7 @@ export function StellarWalletProvider({ children }: { children: ReactNode }) {
     return () => {
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, [publicKey, refreshNetworkDetails]);
+  }, [publicKey, refreshNetworkDetails, disconnect]);
 
   const isNetworkMismatch = Boolean(
     networkName && networkName !== stellarNetwork,
