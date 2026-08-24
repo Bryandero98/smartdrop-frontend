@@ -392,4 +392,121 @@ describe("useSorobanEvents", () => {
     expect(mockRpc.getLatestLedger).not.toHaveBeenCalled();
     expect(mockRpc.getEvents).not.toHaveBeenCalled();
   });
+
+  it("re-anchors startLedger via getLatestLedger when getEvents throws a retention-window error", async () => {
+    const retentionError = new Error(
+      "start is before oldest ledger 2000"
+    );
+
+    const mockRpc: SorobanEventsRpc = {
+      getLatestLedger: vi.fn().mockResolvedValue({ sequence: 1000 }),
+      getEvents: vi.fn().mockRejectedValue(retentionError),
+    };
+
+    const wrapper = ({ children }: { children: React.ReactNode }) =>
+      createElement(QueryClientProvider, { client: queryClient }, children);
+
+    renderHook(
+      () => useSorobanEvents([TEST_CONTRACT_ID], ["lock_assets"], mockRpc),
+      { wrapper }
+    );
+
+    // init() resolves getLatestLedger → startLedgerRef = 1000
+    await vi.advanceTimersByTimeAsync(0);
+    expect(mockRpc.getLatestLedger).toHaveBeenCalledTimes(1);
+
+    // First poll tick → getEvents fails → catch block must re-anchor
+    await vi.advanceTimersByTimeAsync(5000);
+
+    // NOTE: the catch block currently swallows the error without re-anchoring.
+    // Once the catch block is fixed to call getLatestLedger on retention-window
+    // errors, this assertion will pass. Until then it documents the expected
+    // contract: startLedgerRef must be refreshed so the next tick doesn't
+    // re-submit the same stale startLedger and loop forever.
+    expect(mockRpc.getLatestLedger).toHaveBeenCalledTimes(2);
+    expect(mockRpc.getEvents).toHaveBeenCalledTimes(1);
+  });
+
+  it("resumes event processing after recovery from a transient failure", async () => {
+    const invalidateQueries = vi.spyOn(queryClient, "invalidateQueries");
+
+    const lockEvent = {
+      inSuccessfulContractCall: true,
+      topic: [
+        xdr.ScVal.scvSymbol("lock_assets"),
+        addrScVal(TEST_PUBLIC_KEY),
+      ],
+      contractId: TEST_CONTRACT_ID,
+      value: xdr.ScVal.scvVoid(),
+      txHash: "deadbeef",
+      ledger: 2001,
+      ledgerClosedAt: new Date().toISOString(),
+      pagingToken: "2001-0-0",
+      id: "2001-0-0",
+      type: "contract",
+    };
+
+    const mockRpc: SorobanEventsRpc = {
+      getLatestLedger: vi
+        .fn()
+        .mockResolvedValueOnce({ sequence: 1000 })
+        .mockResolvedValueOnce({ sequence: 2000 }),
+      getEvents: vi
+        .fn()
+        .mockRejectedValueOnce(new Error("start is before oldest ledger"))
+        .mockResolvedValueOnce({
+          events: [lockEvent],
+          latestLedger: 2001,
+        }),
+    };
+
+    const wrapper = ({ children }: { children: React.ReactNode }) =>
+      createElement(QueryClientProvider, { client: queryClient }, children);
+
+    renderHook(
+      () => useSorobanEvents([TEST_CONTRACT_ID], ["lock_assets"], mockRpc),
+      { wrapper }
+    );
+
+    // init
+    await vi.advanceTimersByTimeAsync(0);
+
+    // Tick 1 → fails, catch re-anchors via getLatestLedger
+    await vi.advanceTimersByTimeAsync(5000);
+    expect(mockRpc.getEvents).toHaveBeenCalledTimes(1);
+
+    // Tick 2 → succeeds with fresh events after re-anchor
+    await vi.advanceTimersByTimeAsync(5000);
+    expect(mockRpc.getEvents).toHaveBeenCalledTimes(2);
+
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: [QUERY_KEYS.USER_POSITION],
+    });
+  });
+
+  it("does not re-anchor on generic transient errors (only retention-window errors trigger re-anchoring)", async () => {
+    const genericError = new Error("network timeout");
+
+    const mockRpc: SorobanEventsRpc = {
+      getLatestLedger: vi.fn().mockResolvedValue({ sequence: 1000 }),
+      getEvents: vi.fn().mockRejectedValue(genericError),
+    };
+
+    const wrapper = ({ children }: { children: React.ReactNode }) =>
+      createElement(QueryClientProvider, { client: queryClient }, children);
+
+    renderHook(
+      () => useSorobanEvents([TEST_CONTRACT_ID], ["lock_assets"], mockRpc),
+      { wrapper }
+    );
+
+    await vi.advanceTimersByTimeAsync(0);
+
+    // Tick 1 → generic error
+    await vi.advanceTimersByTimeAsync(5000);
+
+    // getLatestLedger was only called once during init, not in the catch block
+    expect(mockRpc.getLatestLedger).toHaveBeenCalledTimes(1);
+    expect(mockRpc.getEvents).toHaveBeenCalledTimes(1);
+  });
 });
