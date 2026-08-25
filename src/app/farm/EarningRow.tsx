@@ -76,12 +76,18 @@ export const EarningRow = memo(function EarningRow({
   position,
 }: EarningRowProps) {
   const openUnlock = useFarmStore((s) => s.openUnlock);
+  const openBoost = useFarmStore((s) => s.openBoost);
   const { isNetworkMismatch } = useStellarWallet();
   const countdown = useCountdown(unlockAvailableAt(position));
   const hasStake = position.lockedAmount > 0;
   const canUnlock = hasStake && countdown.isElapsed;
-  const boostUnavailable = true;
+  const boostDisabled = !hasStake || isNetworkMismatch;
   const unlockDisabled = !canUnlock || isNetworkMismatch;
+  const boostTooltipLabel = isNetworkMismatch
+    ? `Switch Freighter to ${stellarNetwork} to set boost.`
+    : !hasStake
+      ? "Deposit first to enable boost"
+      : undefined;
   const unlockTooltipLabel = isNetworkMismatch
     ? `Switch Freighter to ${stellarNetwork} to unlock.`
     : !hasStake
@@ -144,19 +150,27 @@ export const EarningRow = memo(function EarningRow({
         direction={{ base: "column", md: "row" }}
         w={{ base: "full", md: "auto" }}
       >
-        <Button
-          borderRadius="3xl"
-          variant="outline"
-          borderColor="app.border"
-          color="app.muted"
-          isDisabled={isNetworkMismatch || boostUnavailable}
-          opacity={0.6}
-          cursor="not-allowed"
-          _hover={{ opacity: 0.6 }}
-          w={{ base: "full", md: "auto" }}
+        <Tooltip
+          label={boostTooltipLabel}
+          isDisabled={!boostDisabled}
+          hasArrow
+          bg="app.tooltipBg"
+          color="app.tooltipFg"
         >
-          Boost
-        </Button>
+          <Box w={{ base: "full", md: "auto" }}>
+            <Button
+              borderRadius="3xl"
+              variant="outline"
+              borderColor="app.border"
+              color={position.boostAllocation ? "app.accent" : "app.muted"}
+              isDisabled={boostDisabled}
+              onClick={() => openBoost(position)}
+              w={{ base: "full", md: "auto" }}
+            >
+              {position.boostAllocation ? `Boost (${position.boostAllocation}%)` : "Boost"}
+            </Button>
+          </Box>
+        </Tooltip>
         <Tooltip
           label={unlockTooltipLabel}
           isDisabled={!unlockDisabled}

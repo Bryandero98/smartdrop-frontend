@@ -1,7 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
+  Alert,
+  AlertIcon,
   Badge,
   Box,
   Button,
@@ -27,7 +29,8 @@ import {
   stellarExpertTxUrl,
   type TxHistoryEntry,
 } from "@/lib/soroban";
-import { poolContractId, stellarNetwork } from "@/config";
+import { stellarNetwork } from "@/config";
+import { usePools } from "@/hooks/useSorobanQuery";
 
 const PAGE_SIZE = 20;
 
@@ -71,21 +74,28 @@ function EmptyState({ children }: { children: React.ReactNode }) {
 
 export default function HistoryPage() {
   const { publicKey, isConnected } = useStellarWallet();
+  const { data: pools } = usePools();
   const [entries, setEntries] = useState<TxHistoryEntry[]>([]);
+  const [truncated, setTruncated] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [page, setPage] = useState(1);
 
-  const poolContractIds = poolContractId ? [poolContractId] : [];
+  const poolContractIds = useMemo(
+    () => (pools ?? []).map((p) => p.contractAddress).filter(Boolean),
+    [pools],
+  );
 
   useEffect(() => {
     if (!publicKey || poolContractIds.length === 0) return;
     setIsLoading(true);
     setPage(1);
     getUserTransactionHistory(publicKey, poolContractIds)
-      .then(setEntries)
+      .then(({ entries, truncated }) => {
+        setEntries(entries);
+        setTruncated(truncated);
+      })
       .finally(() => setIsLoading(false));
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [publicKey]);
+  }, [publicKey, poolContractIds]);
 
   const totalPages = Math.max(1, Math.ceil(entries.length / PAGE_SIZE));
   const paged = entries.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
@@ -212,6 +222,13 @@ export default function HistoryPage() {
               </Tbody>
             </Table>
           </TableContainer>
+
+          {truncated && (
+            <Alert status="warning" borderRadius="2xl" mt={4} bg="#2a2412" color="#f6c453" maxW="1000px" w="full">
+              <AlertIcon color="#f6c453" />
+              <Text fontSize="sm">Some history may be missing — the result was truncated. Older transactions may not be shown.</Text>
+            </Alert>
+          )}
 
           {totalPages > 1 && (
             <Flex gap={2} mt={6} align="center" wrap="wrap" justify="center">

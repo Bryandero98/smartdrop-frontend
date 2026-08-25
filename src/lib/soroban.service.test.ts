@@ -1260,6 +1260,7 @@ describe("SorobanService event-derived pool data", () => {
           inSuccessfulContractCall: false,
         }),
       ],
+      latestLedger: 200_000,
     });
 
     await expect(service.getPoolHistory(POOL_CONTRACT_ID, 3)).resolves.toEqual([
@@ -1782,6 +1783,7 @@ describe("soroban exported utilities and transaction history", () => {
             txHash: "malformed-tx",
           },
         ],
+        latestLedger: 200_000,
       }),
     };
 
@@ -1791,35 +1793,38 @@ describe("soroban exported utilities and transaction history", () => {
         [POOL_CONTRACT_ID],
         rpcOverride,
       ),
-    ).resolves.toEqual([
-      {
-        date: "2026-06-29T10:00:00.000Z",
-        action: "unlock",
-        amount: "25000000",
-        symbol: "XLM",
-        poolId: POOL_CONTRACT_ID,
-        creditsEarned: "7500000",
-        txHash: "unlock-tx",
-      },
-      {
-        date: "2026-06-28T10:00:00.000Z",
-        action: "lock",
-        amount: "100000000",
-        symbol: "XLM",
-        poolId: POOL_CONTRACT_ID,
-        creditsEarned: undefined,
-        txHash: "lock-tx",
-      },
-      {
-        date: "2026-06-27T10:00:00.000Z",
-        action: "unlock",
-        amount: "10000000",
-        symbol: "XLM",
-        poolId: POOL_CONTRACT_ID,
-        creditsEarned: "1500000",
-        txHash: "unlock-array-tx",
-      },
-    ]);
+    ).resolves.toEqual({
+      entries: [
+        {
+          date: "2026-06-29T10:00:00.000Z",
+          action: "unlock",
+          amount: "25000000",
+          symbol: "XLM",
+          poolId: POOL_CONTRACT_ID,
+          creditsEarned: "7500000",
+          txHash: "unlock-tx",
+        },
+        {
+          date: "2026-06-28T10:00:00.000Z",
+          action: "lock",
+          amount: "100000000",
+          symbol: "XLM",
+          poolId: POOL_CONTRACT_ID,
+          creditsEarned: undefined,
+          txHash: "lock-tx",
+        },
+        {
+          date: "2026-06-27T10:00:00.000Z",
+          action: "unlock",
+          amount: "10000000",
+          symbol: "XLM",
+          poolId: POOL_CONTRACT_ID,
+          creditsEarned: "1500000",
+          txHash: "unlock-array-tx",
+        },
+      ],
+      truncated: false,
+    });
     expect(rpcOverride.getEvents).toHaveBeenCalledWith(
       expect.objectContaining({
         startLedger: 79_040,
@@ -1847,10 +1852,10 @@ describe("soroban exported utilities and transaction history", () => {
 
     await expect(
       getUserTransactionHistory("", [POOL_CONTRACT_ID], rpcOverride),
-    ).resolves.toEqual([]);
+    ).resolves.toEqual({ entries: [], truncated: false });
     await expect(
       getUserTransactionHistory(USER_PUBLIC_KEY, [], rpcOverride),
-    ).resolves.toEqual([]);
+    ).resolves.toEqual({ entries: [], truncated: false });
     expect(rpcOverride.getLatestLedger).not.toHaveBeenCalled();
 
     await expect(
@@ -1859,7 +1864,7 @@ describe("soroban exported utilities and transaction history", () => {
         [POOL_CONTRACT_ID],
         rpcOverride,
       ),
-    ).resolves.toEqual([]);
+    ).resolves.toEqual({ entries: [], truncated: false });
     expect(errorSpy).toHaveBeenCalledWith(
       "Error fetching transaction history:",
       expect.any(Error),

@@ -3,7 +3,8 @@
 import { PlatformStats } from "@/components/PlatformStats/PlatformStats";
 import ConnectWalletButton from "@/components/ConnectWalletButton/ConnectWalletButton";
 import UnlockModal from "@/components/UnlockModal/UnlockModal";
-import { EarningRow } from "@/app/farm/EarningRow";
+import BoostModal from "@/components/BoostModal/BoostModal";
+import { EarningRow, MetricColumn } from "@/app/farm/EarningRow";
 import { FarmPoolRow } from "@/app/farm/FarmPoolRow";
 import {
   factoryContractId,
@@ -476,6 +477,7 @@ export default function Farm() {
       lockedAmount: position?.amount ? Number(position.amount) : 0,
       lockedAt: position?.lockedAt ?? 0,
       lockPeriodSeconds: position ? pool.minLockPeriod : minLockPeriodSeconds,
+      boostAllocation: position?.boostAllocation,
     }));
   }, [userPositions]);
 
@@ -498,6 +500,7 @@ export default function Farm() {
         lockedAmount: position?.amount ? Number(position.amount) : 0,
         lockedAt: position?.lockedAt ?? 0,
         lockPeriodSeconds: pool.minLockPeriod,
+        boostAllocation: position?.boostAllocation,
       };
     });
   }, [pools, userPositions]);
@@ -612,6 +615,7 @@ export default function Farm() {
         onClose={handleDepositClose}
       />
       <UnlockModal />
+      <BoostModal />
     </Flex>
   );
 }

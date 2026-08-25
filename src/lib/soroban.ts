@@ -1421,7 +1421,7 @@ export class SorobanService {
   async getPoolHistory(
     poolId: string,
     days: number = 7,
-  ): Promise<{ date: string; tvl: string }[]> {
+  ): Promise<{ date: string; tvl: string; truncated?: boolean }> {
     try {
       const latest = await this.rpcServer.getLatestLedger();
       // ~5 s per ledger; days * 86400 / 5
@@ -1432,8 +1432,9 @@ export class SorobanService {
       const lockSym = xdr.ScVal.scvSymbol('lock_assets').toXDR('base64');
       const unlockSym = xdr.ScVal.scvSymbol('unlock_assets').toXDR('base64');
 
-      const response = await this.rpcServer.getEvents({
+      const { events, truncated } = await getAllEvents(this.rpcServer, {
         startLedger,
+        endLedger: latest.sequence,
         filters: [
           {
             type: 'contract',
@@ -1443,6 +1444,10 @@ export class SorobanService {
         ],
         limit: 500,
       });
+
+      if (truncated) {
+        console.warn('[SmartDrop] getPoolHistory: event results were truncated — TVL history may be incomplete');
+      }
 
       // Build a running TVL map keyed by ISO date string
       const dailyMap = new Map<string, number>();
@@ -1455,7 +1460,7 @@ export class SorobanService {
         dailyMap.set(d.toISOString().slice(0, 10), 0);
       }
 
-      for (const evt of response.events) {
+      for (const evt of events) {
         if (!evt.inSuccessfulContractCall) continue;
         const topics = (evt.topic as import('@stellar/stellar-sdk').xdr.ScVal[]).map(scValToNative);
         const action = topics[0] as string;
@@ -1473,9 +1478,11 @@ export class SorobanService {
         if (dailyMap.has(dateKey)) dailyMap.set(dateKey, runningTvl);
       }
 
-      return Array.from(dailyMap.entries())
+      const result = Array.from(dailyMap.entries())
         .sort(([a], [b]) => a.localeCompare(b))
-        .map(([date, tvl]) => ({ date, tvl: String(tvl) }));
+        .map(([date, tvl]) => ({ date, tvl: String(tvl), ...(truncated ? { truncated: true } : {}) }));
+
+      return result;
     } catch (err) {
       console.warn('[SmartDrop] getPoolHistory failed:', err);
       return [];
@@ -1499,8 +1506,9 @@ export class SorobanService {
       const lockSym = xdr.ScVal.scvSymbol('lock_assets').toXDR('base64');
       const unlockSym = xdr.ScVal.scvSymbol('unlock_assets').toXDR('base64');
 
-      const response = await this.rpcServer.getEvents({
+      const { events } = await getAllEvents(this.rpcServer, {
         startLedger,
+        endLedger: latest.sequence,
         filters: [
           {
             type: 'contract',
@@ -1513,7 +1521,7 @@ export class SorobanService {
 
       const balances = new Map<string, number>();
 
-      for (const evt of response.events) {
+      for (const evt of events) {
         if (!evt.inSuccessfulContractCall) continue;
         const topics = (evt.topic as import('@stellar/stellar-sdk').xdr.ScVal[]).map(scValToNative);
         const action = topics[0] as string;
@@ -1609,8 +1617,9 @@ export class SorobanService {
       const unlockSym = xdr.ScVal.scvSymbol('unlock_assets').toXDR('base64');
       const creditSym = xdr.ScVal.scvSymbol('update_credits').toXDR('base64');
 
-      const response = await this.rpcServer.getEvents({
+      const { events, truncated } = await getAllEvents(this.rpcServer, {
         startLedger,
+        endLedger: latest.sequence,
         filters: [
           {
             type: 'contract',
@@ -1620,6 +1629,10 @@ export class SorobanService {
         ],
         limit: 1000,
       });
+
+      if (truncated) {
+        console.warn('[SmartDrop] fetchLeaderboardFromEvents: event results were truncated — leaderboard may be incomplete');
+      }
 
       const agg = new Map<string, { stake: number; credits: number }>();
       const rowFor = (addr: string) => {
@@ -1631,7 +1644,7 @@ export class SorobanService {
         return row;
       };
 
-      for (const evt of response.events) {
+      for (const evt of events) {
         if (!evt.inSuccessfulContractCall) continue;
         const topics = (evt.topic as xdr.ScVal[]).map(scValToNative);
         const action = topics[0] as string;
@@ -1867,6 +1880,71 @@ interface SorobanRpcServer {
   getEvents(request: Parameters<rpc.Server['getEvents']>[0]): ReturnType<rpc.Server['getEvents']>;
 }
 
+/** Maximum number of auto-pagination loops to prevent infinite fetching. */
+const MAX_EVENT_PAGES = 20;
+
+/**
+ * Paginated response from {@link getAllEvents}.
+ */
+export interface PaginatedEvents {
+  events: Awaited<ReturnType<SorobanRpcServer['getEvents']>>['events'];
+  truncated: boolean;
+}
+
+/**
+ * Fetch ALL Soroban contract events within a ledger range, automatically
+ * paginating through the RPC's bounded response pages.
+ *
+ * The Soroban `getEvents` RPC returns at most `limit` events per call.
+ * This helper loops, advancing `startLedger` past the latest ledger of
+ * each response, until the full range is covered or the cap is hit.
+ *
+ * @param server   RPC server (or mock in tests)
+ * @param opts     Same filters/limits you'd pass to `getEvents`, plus
+ *                 `endLedger` to define the upper bound of the range.
+ * @returns        All events plus a `truncated` flag so callers can
+ *                 surface a warning when the full range wasn't covered.
+ */
+export async function getAllEvents(
+  server: SorobanRpcServer,
+  opts: {
+    startLedger: number;
+    endLedger: number;
+    filters: Parameters<SorobanRpcServer['getEvents']>[0]['filters'];
+    limit?: number;
+  },
+): Promise<PaginatedEvents> {
+  const { startLedger, endLedger, filters, limit = 500 } = opts;
+  const allEvents: PaginatedEvents['events'] = [];
+  let cursor = startLedger;
+  let truncated = false;
+  let reachedEnd = false;
+
+  for (let i = 0; i < MAX_EVENT_PAGES; i++) {
+    const response = await server.getEvents({
+      startLedger: cursor,
+      filters,
+      limit,
+    });
+    allEvents.push(...response.events);
+
+    const latestLedger = Number(response.latestLedger ?? 0);
+    // If the server doesn't report a ledger, we can't continue — stop.
+    if (!latestLedger) break;
+    // If we've covered the full range or the page wasn't full, we're done.
+    if (latestLedger >= endLedger || response.events.length < limit) {
+      reachedEnd = true;
+      break;
+    }
+    cursor = latestLedger + 1;
+  }
+
+  // If we exhausted the loop (hit MAX_EVENT_PAGES) without covering the full range, flag it.
+  if (!reachedEnd) truncated = true;
+
+  return { events: allEvents, truncated };
+}
+
 type SorobanEventLike = {
   inSuccessfulContractCall?: boolean;
   topic: xdr.ScVal[];
@@ -1942,8 +2020,8 @@ export async function getUserTransactionHistory(
   publicKey: string,
   poolContractIds: string[],
   rpcOverride?: SorobanRpcServer,
-): Promise<TxHistoryEntry[]> {
-  if (!publicKey || poolContractIds.length === 0) return [];
+): Promise<{ entries: TxHistoryEntry[]; truncated: boolean }> {
+  if (!publicKey || poolContractIds.length === 0) return { entries: [], truncated: false };
 
   const server: SorobanRpcServer = rpcOverride ?? rpcServer;
 
@@ -1954,8 +2032,9 @@ export async function getUserTransactionHistory(
     const lockSymbol = xdr.ScVal.scvSymbol('lock_assets').toXDR('base64');
     const unlockSymbol = xdr.ScVal.scvSymbol('unlock_assets').toXDR('base64');
 
-    const response = await server.getEvents({
+    const { events, truncated } = await getAllEvents(server, {
       startLedger,
+      endLedger: latest.sequence,
       filters: [
         {
           type: 'contract',
@@ -1969,18 +2048,25 @@ export async function getUserTransactionHistory(
       limit: 200,
     });
 
+    if (truncated) {
+      console.warn('[SmartDrop] getUserTransactionHistory: event results were truncated — history may be incomplete');
+    }
+
     const entries: TxHistoryEntry[] = [];
-    for (const evt of response.events) {
+    for (const evt of events) {
       const entry = parseTxHistoryEvent(evt as SorobanEventLike, publicKey);
       if (entry) entries.push(entry);
     }
 
     // Newest first
-    return entries.sort(
-      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
-    );
+    return {
+      entries: entries.sort(
+        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
+      ),
+      truncated,
+    };
   } catch (error) {
     console.error('Error fetching transaction history:', error);
-    return [];
+    return { entries: [], truncated: false };
   }
 }
