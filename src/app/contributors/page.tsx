@@ -44,6 +44,22 @@ export default function ContributorsPage() {
         </Text>
       </Box>
 
+      {sorted.length === 0 ? (
+        <Flex
+          w="100%"
+          maxW="1100px"
+          justify="center"
+          py={16}
+          border="1px dashed"
+          borderColor="app.border"
+          borderRadius="card"
+          bg="app.surface"
+        >
+          <Text color="app.muted">
+            Contributor data is unavailable right now — check back soon.
+          </Text>
+        </Flex>
+      ) : (
       <Grid
         w="100%"
         maxW="1100px"
@@ -100,6 +116,7 @@ export default function ContributorsPage() {
           </ChakraLink>
         ))}
       </Grid>
+      )}
     </Flex>
   );
 }
