@@ -109,10 +109,17 @@ export function useLockFlow({
           durationMs: Date.now() - start,
         });
 
-        // Invalidate position and pool caches so the UI reflects the new stake
-        queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.USER_POSITION] });
+        // Invalidate position and pool caches so the UI reflects the new stake.
+        // This is the superset of both useLockAssets' onSuccess invalidations
+        // (#83) and useLockFlow's original set, ensuring no stale data regardless
+        // of which entry point triggered the deposit.
         queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.POOLS] });
+        queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.USER_POSITION] });
+        queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.USER_POSITION, poolId] });
+        queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.USER_POSITION, 'all', publicKey] });
+        queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.USER_CREDITS, poolId] });
         queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PLATFORM_STATS] });
+        queryClient.invalidateQueries({ queryKey: ['stellarBalance', publicKey] });
 
       } catch (err) {
         const normalized = normalizeError(err, "Deposit");
