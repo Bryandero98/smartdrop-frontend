@@ -1,5 +1,6 @@
 ﻿import type { NextConfig } from "next";
 import withBundleAnalyzer from "@next/bundle-analyzer";
+import { validateEnv } from "./src/config/validateEnv";
 
 const raw = process.env.BASE_PATH?.trim() ?? "";
 const basePath = raw.startsWith("/") ? raw : raw ? `/${raw}` : "";
@@ -13,6 +14,10 @@ const basePath = raw.startsWith("/") ? raw : raw ? `/${raw}` : "";
  * the Stellar Horizon API directly from the browser.
  */
 const isStaticExport = process.env.NEXT_EXPORT === "true";
+
+// Fail the build immediately on missing/malformed env vars instead of
+// silently falling back to demo mode or a runtime 500 (issue #199).
+validateEnv({ isStaticExport });
 const backendApiOrigin = (() => {
   try {
     return new URL(
