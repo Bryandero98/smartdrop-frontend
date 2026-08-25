@@ -1,5 +1,8 @@
 ﻿import type { NextConfig } from "next";
 import withBundleAnalyzer from "@next/bundle-analyzer";
+import { validateEnv } from "./src/config/validateEnv";
+
+validateEnv();
 
 const raw = process.env.BASE_PATH?.trim() ?? "";
 const basePath = raw.startsWith("/") ? raw : raw ? `/${raw}` : "";

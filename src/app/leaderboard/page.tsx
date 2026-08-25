@@ -7,6 +7,7 @@ import {
   HStack,
   Input,
   Select,
+  Skeleton,
   Spinner,
   Table,
   TableContainer,
@@ -152,9 +153,39 @@ export default function LeaderboardPage() {
       </Flex>
 
       {isLoading && paged.length === 0 ? (
-        <Flex w="100%" justify="center" py={16}>
-          <Spinner color="app.accent" size="xl" thickness="3px" />
-        </Flex>
+        <TableContainer
+          w="100%"
+          maxW="900px"
+          overflowX="auto"
+          border="1px solid"
+          borderColor="app.border"
+          borderRadius="card"
+          bg="app.surface"
+          boxShadow="card"
+        >
+          <Table variant="unstyled" size="sm">
+            <Thead>
+              <Tr borderBottom="1px solid" borderColor="app.border">
+                <Th color="app.muted" fontWeight="medium" py={4} pl={5}>#</Th>
+                <Th color="app.muted" fontWeight="medium" py={4}>Address</Th>
+                <Th color="app.muted" fontWeight="medium" py={4} px={0} isNumeric>Credits</Th>
+                <Th color="app.muted" fontWeight="medium" py={4} px={0} isNumeric>Stake</Th>
+                <Th color="app.muted" fontWeight="medium" py={4} pr={5} isNumeric>Boost %</Th>
+              </Tr>
+            </Thead>
+            <Tbody>
+              {Array.from({ length: PAGE_SIZE }).map((_, i) => (
+                <Tr key={i} borderTop="1px solid" borderColor="app.border">
+                  <Td py={4} pl={5}><Skeleton height="16px" width="24px" /></Td>
+                  <Td py={4}><Skeleton height="16px" width="120px" /></Td>
+                  <Td py={4} isNumeric><Skeleton height="16px" width="60px" ml="auto" /></Td>
+                  <Td py={4} isNumeric><Skeleton height="16px" width="60px" ml="auto" /></Td>
+                  <Td py={4} pr={5} isNumeric><Skeleton height="16px" width="40px" ml="auto" /></Td>
+                </Tr>
+              ))}
+            </Tbody>
+          </Table>
+        </TableContainer>
       ) : filteredCount === 0 ? (
         <Flex
           w="100%"

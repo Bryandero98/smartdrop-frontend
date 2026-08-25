@@ -6,12 +6,27 @@ import "./globals.css";
 
 const inter = Inter({ subsets: ["latin"], display: "swap" });
 
+const SITE_NAME = "SmartDrop";
+const SITE_TITLE = "SmartDrop — Stellar Liquidity Farming";
+const SITE_DESCRIPTION = "Stellar-based liquidity-oriented airdrop experiment";
+
 export const metadata: Metadata = {
   title: {
-    default: "SmartDrop — Stellar Liquidity Farming",
+    default: SITE_TITLE,
     template: "%s · SmartDrop",
   },
-  description: "Stellar-based liquidity-oriented airdrop experiment",
+  description: SITE_DESCRIPTION,
+  openGraph: {
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
+    siteName: SITE_NAME,
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
+  },
   other: {
     "Content-Security-Policy": CSP_POLICY,
   },
