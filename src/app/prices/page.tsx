@@ -125,6 +125,20 @@ export default function PricesPage() {
             isRetrying={isFetching}
             fallbackMessage="Failed to fetch price"
           />
+        ) : data && data.price_usd === null ? (
+          <Flex
+            justify="center"
+            py={12}
+            border="1px dashed"
+            borderColor="app.border"
+            borderRadius="card"
+            bg="app.surface"
+          >
+            <Text color="app.muted">
+              No price data available for {data.asset_code} right now. Sources attempted:{" "}
+              {data.sources_attempted.join(", ") || "none"}.
+            </Text>
+          </Flex>
         ) : data ? (
           <Box
             border="1px solid"
@@ -156,7 +170,18 @@ export default function PricesPage() {
               Sources attempted: {data.sources_attempted.join(", ") || "none"}
             </Text>
           </Box>
-        ) : null}
+        ) : (
+          <Flex
+            justify="center"
+            py={12}
+            border="1px dashed"
+            borderColor="app.border"
+            borderRadius="card"
+            bg="app.surface"
+          >
+            <Text color="app.muted">Enter an asset code above and look up its price.</Text>
+          </Flex>
+        )}
       </Box>
     </Flex>
   );
