@@ -722,8 +722,15 @@ export class SorobanService {
   private rpcServer: rpc.Server;
   private factoryContract?: Contract;
   private poolContracts: Map<string, Contract> = new Map();
-  private cachedSimulationAccount?: Awaited<ReturnType<rpc.Server['getAccount']>>;
   private simulationAccountAddress: string;
+  // Short-lived cache for getAccount results keyed by address.
+  // Collapses N concurrent calls for the same simulation account
+  // (e.g. useAllUserPositions fanning out over N pools) into one RPC fetch.
+  private accountCache: Map<string, { account: Account; expiresAt: number }> = new Map();
+  // Tracks in-flight getAccount requests so truly concurrent calls share
+  // the same promise rather than each firing a separate RPC round trip.
+  private inflightAccount: Map<string, Promise<Account>> = new Map();
+  private static ACCOUNT_CACHE_TTL_MS = 3_000;
 
   constructor() {
     this.rpcServer = rpcServer;
@@ -735,17 +742,10 @@ export class SorobanService {
 
   /**
    * Returns a cached Account object for read-only simulation calls.
-   * Fetches from RPC on first call, then reuses the cached version
-   * (sequence number is refreshed per call by TransactionBuilder).
+   * Uses cachedGetAccount for TTL + in-flight deduplication. Throws
+   * ConfigError if NEXT_PUBLIC_SIMULATION_ACCOUNT is not set.
    */
-  private async getSimulationAccount(): Promise<Awaited<ReturnType<rpc.Server['getAccount']>>> {
-    if (this.cachedSimulationAccount) {
-      // Refresh sequence number for next TransactionBuilder.build()
-      const fresh = await this.rpcServer.getAccount(this.simulationAccountAddress);
-      this.cachedSimulationAccount = fresh;
-      return fresh;
-    }
-
+  private async getSimulationAccount(): Promise<Account> {
     if (!this.simulationAccountAddress) {
       throw new ConfigError(
         'NEXT_PUBLIC_SIMULATION_ACCOUNT is not configured. Set it to a funded Stellar account on the active network.',
@@ -753,14 +753,45 @@ export class SorobanService {
     }
 
     try {
-      this.cachedSimulationAccount = await this.rpcServer.getAccount(this.simulationAccountAddress);
-      return this.cachedSimulationAccount;
+      return await this.cachedGetAccount(this.simulationAccountAddress);
     } catch (err) {
-      this.cachedSimulationAccount = undefined;
       throw new ConfigError(
         `Simulation account ${this.simulationAccountAddress} could not be resolved: ${err instanceof Error ? err.message : 'unknown error'}. Fund this account or set NEXT_PUBLIC_SIMULATION_ACCOUNT to a funded account on ${stellarNetwork}.`,
       );
     }
+  }
+
+  /**
+   * Cached getAccount — returns a fresh Account object but deduplicates
+   * concurrent and near-concurrent calls for the same address within a
+   * short TTL window.  Used by every method that needs a simulation
+   * account (getFactoryPools, getUserPosition, calculateUserCredits, …).
+   */
+  async cachedGetAccount(address: string): Promise<Account> {
+    const now = Date.now();
+    const cached = this.accountCache.get(address);
+    if (cached && cached.expiresAt > now) {
+      return cached.account;
+    }
+
+    // If a request is already in flight for this address, share it
+    const inflight = this.inflightAccount.get(address);
+    if (inflight) return inflight;
+
+    const promise = this.rpcServer.getAccount(address).then((account) => {
+      this.accountCache.set(address, {
+        account,
+        expiresAt: Date.now() + SorobanService.ACCOUNT_CACHE_TTL_MS,
+      });
+      this.inflightAccount.delete(address);
+      return account;
+    }).catch((err) => {
+      this.inflightAccount.delete(address);
+      throw err;
+    });
+
+    this.inflightAccount.set(address, promise);
+    return promise;
   }
 
   /**

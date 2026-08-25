@@ -14,6 +14,8 @@ vi.mock('@/config', () => ({
   horizonUrl: 'https://horizon-testnet.stellar.org',
   networkPassphrase: 'Test SDF Network ; September 2015',
   sorobanRpcUrl: 'https://soroban-testnet.stellar.org',
+  simulationAccount: 'GBQ3WPTHKJ5XKWLOKUZJLZL2GVXR6RWQCXUVDQZWM7Q2YNLDRVGM5ZWJ',
+  stellarNetwork: 'TESTNET',
 }));
 
 const USER_PUBKEY = StrKey.encodeEd25519PublicKey(new Uint8Array(32).fill(1));
