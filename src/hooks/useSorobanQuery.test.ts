@@ -4,11 +4,24 @@ import { waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { renderHook, act } from "@/test/renderHook";
 import { sorobanService } from "@/lib/soroban";
-import { usePoolDepositors, useLockAssetsFeePreview } from "./useSorobanQuery";
+import {
+  usePoolDepositors,
+  useLockAssetsFeePreview,
+  useSetBoost,
+} from "./useSorobanQuery";
 
 vi.mock("@/lib/soroban", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/soroban")>();
   return { ...actual, simulateLockAssets: vi.fn() };
+});
+
+vi.mock("@/context/StellarWalletContext", () => ({
+  useStellarWallet: vi.fn(),
+}));
+
+vi.mock("@chakra-ui/react", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@chakra-ui/react")>();
+  return { ...actual, useToast: vi.fn() };
 });
 
 const { simulateLockAssets } = await import("@/lib/soroban");
@@ -230,5 +243,174 @@ describe("useLockAssetsFeePreview (#134)", () => {
       await Promise.resolve();
     });
     expect(result.current.data?.feePreview).toBe("second");
+  });
+});
+
+describe("useSetBoost (#92)", () => {
+  const TEST_PUBLIC_KEY =
+    "GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN";
+  const POOL_ID = "pool-xlm";
+  let queryClient: QueryClient;
+  let toastMock: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+  });
+
+  function boostWrapper({ children }: { children: ReactNode }) {
+    return createElement(QueryClientProvider, { client: queryClient }, children);
+  }
+
+  beforeEach(async () => {
+    const { useStellarWallet } = await import(
+      "@/context/StellarWalletContext"
+    );
+    vi.mocked(useStellarWallet).mockReturnValue({
+      publicKey: TEST_PUBLIC_KEY,
+      isConnected: true,
+      walletApi: { signTransaction: vi.fn().mockResolvedValue("signed-xdr") },
+      connect: vi.fn(),
+      disconnect: vi.fn(),
+    });
+
+    const { useToast } = await import("@chakra-ui/react");
+    toastMock = vi.fn();
+    vi.mocked(useToast).mockReturnValue(toastMock);
+  });
+
+  it("calls sorobanService.setBoost with correct arguments", async () => {
+    const spy = vi
+      .spyOn(sorobanService, "setBoost")
+      .mockResolvedValue({ success: true, transactionHash: "txhash" });
+
+    const { result } = renderHook(() => useSetBoost(), {
+      wrapper: boostWrapper,
+    });
+
+    await act(async () => {
+      result.current.mutate({ poolId: POOL_ID, allocationPercentage: 50 });
+    });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+    expect(spy).toHaveBeenCalledWith(
+      POOL_ID,
+      TEST_PUBLIC_KEY,
+      50,
+      expect.objectContaining({ signTransaction: expect.any(Function) }),
+    );
+  });
+
+  it("shows success toast and invalidates queries on success", async () => {
+    vi.spyOn(sorobanService, "setBoost").mockResolvedValue({
+      success: true,
+      transactionHash: "txhash123",
+    });
+    const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
+
+    const { result } = renderHook(() => useSetBoost(), {
+      wrapper: boostWrapper,
+    });
+
+    await act(async () => {
+      result.current.mutate({ poolId: POOL_ID, allocationPercentage: 75 });
+    });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+    expect(toastMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: "Boost Configuration Updated",
+        description: "Boost set to 75%",
+        status: "success",
+      }),
+    );
+
+    expect(invalidateSpy).toHaveBeenCalledWith({
+      queryKey: ["userPosition", POOL_ID],
+    });
+    expect(invalidateSpy).toHaveBeenCalledWith({
+      queryKey: ["userCredits", POOL_ID],
+    });
+    expect(invalidateSpy).toHaveBeenCalledWith({
+      queryKey: ["boostConfig", POOL_ID],
+    });
+  });
+
+  it("shows error toast when setBoost fails", async () => {
+    vi.spyOn(sorobanService, "setBoost").mockResolvedValue({
+      success: false,
+      error: "Simulation failed",
+    });
+
+    const { result } = renderHook(() => useSetBoost(), {
+      wrapper: boostWrapper,
+    });
+
+    await act(async () => {
+      result.current.mutate({ poolId: POOL_ID, allocationPercentage: 50 });
+    });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+    expect(toastMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: "Boost Configuration Failed",
+        status: "error",
+      }),
+    );
+  });
+
+  it("shows error toast when wallet is not connected", async () => {
+    const { useStellarWallet } = await import(
+      "@/context/StellarWalletContext"
+    );
+    vi.mocked(useStellarWallet).mockReturnValue({
+      publicKey: null,
+      isConnected: false,
+      walletApi: null,
+      connect: vi.fn(),
+      disconnect: vi.fn(),
+    });
+
+    const { result } = renderHook(() => useSetBoost(), {
+      wrapper: boostWrapper,
+    });
+
+    await act(async () => {
+      result.current.mutate({ poolId: POOL_ID, allocationPercentage: 50 });
+    });
+
+    await waitFor(() => expect(result.current.isError).toBe(true));
+
+    expect(result.current.error?.message).toBe(
+      "Wallet not connected",
+    );
+  });
+
+  it("shows error toast when service throws", async () => {
+    vi.spyOn(sorobanService, "setBoost").mockRejectedValue(
+      new Error("Network error"),
+    );
+
+    const { result } = renderHook(() => useSetBoost(), {
+      wrapper: boostWrapper,
+    });
+
+    await act(async () => {
+      result.current.mutate({ poolId: POOL_ID, allocationPercentage: 50 });
+    });
+
+    await waitFor(() => expect(result.current.isError).toBe(true));
+
+    expect(toastMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: "Transaction Error",
+        description: "Network error",
+        status: "error",
+      }),
+    );
   });
 });

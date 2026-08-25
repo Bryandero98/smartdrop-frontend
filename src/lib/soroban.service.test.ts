@@ -159,9 +159,11 @@ function makeService({
     factoryContract?: Contract;
     poolContracts: Map<string, Contract>;
     rpcServer: MockRpcServer;
+    simulationAccountAddress: string;
   };
 
   svc.rpcServer = rpcServer;
+  svc.simulationAccountAddress = USER_PUBLIC_KEY;
   if (factory) svc.factoryContract = new Contract(POOL_CONTRACT_ID);
   else svc.factoryContract = undefined;
   if (pool) svc.poolContracts.set(POOL_ID, new Contract(POOL_CONTRACT_ID));
@@ -494,6 +496,7 @@ describe("soroban transaction builders", () => {
       "12345678",
       walletApi,
       { onHash: undefined, onStep: undefined },
+      undefined,
     );
   });
 
@@ -525,6 +528,7 @@ describe("soroban transaction builders", () => {
       "1.5000000",
       walletApi,
       { onHash, onStep },
+      undefined,
     );
   });
 });
@@ -571,9 +575,7 @@ describe("SorobanService RPC reads", () => {
       contractAddress: POOL_CONTRACT_ID,
       totalLocked: "10.0000000",
     });
-    expect(rpcServer.getAccount).toHaveBeenCalledWith(
-      "GBQ3WPTHKJ5XKWLOKUZJLZL2GVXR6RWQCXUVDQZWM7Q2YNLDRVGM5ZWJ",
-    );
+    expect(rpcServer.getAccount).toHaveBeenCalledWith(USER_PUBLIC_KEY);
     expect(rpcServer.simulateTransaction).toHaveBeenCalledTimes(1);
   });
 
@@ -1869,5 +1871,61 @@ describe("soroban exported utilities and transaction history", () => {
       "Error fetching transaction history:",
       expect.any(Error),
     );
+  });
+});
+
+describe("SorobanService.cachedGetAccount TTL cache (#90)", () => {
+  it("caches getAccount results within the TTL window", async () => {
+    const rpcServer = makeMockRpcServer();
+    const { service } = makeService({ rpcServer });
+
+    const addr = "GAAAA";
+    await service.cachedGetAccount(addr);
+    await service.cachedGetAccount(addr);
+
+    // Second call should hit cache, not the RPC
+    expect(rpcServer.getAccount).toHaveBeenCalledTimes(1);
+  });
+
+  it("fetches fresh after TTL expires", async () => {
+    vi.useFakeTimers();
+    const rpcServer = makeMockRpcServer();
+    const { service } = makeService({ rpcServer });
+
+    const addr = "GAAAA";
+    await service.cachedGetAccount(addr);
+
+    // Advance past the 3-second TTL
+    vi.advanceTimersByTime(3_001);
+
+    await service.cachedGetAccount(addr);
+    expect(rpcServer.getAccount).toHaveBeenCalledTimes(2);
+  });
+
+  it("deduplicates concurrent calls for the same address", async () => {
+    const rpcServer = makeMockRpcServer();
+    const { service } = makeService({ rpcServer });
+
+    const addr = "GAAAA";
+    // Fire 5 concurrent calls — all should share one getAccount RPC call
+    await Promise.all([
+      service.cachedGetAccount(addr),
+      service.cachedGetAccount(addr),
+      service.cachedGetAccount(addr),
+      service.cachedGetAccount(addr),
+      service.cachedGetAccount(addr),
+    ]);
+
+    expect(rpcServer.getAccount).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not cache across different addresses", async () => {
+    const rpcServer = makeMockRpcServer();
+    const { service } = makeService({ rpcServer });
+
+    await service.cachedGetAccount("GADDR1");
+    await service.cachedGetAccount("GADDR2");
+
+    expect(rpcServer.getAccount).toHaveBeenCalledTimes(2);
   });
 });

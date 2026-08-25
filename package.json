@@ -13,6 +13,7 @@
     "lint": "next lint",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage --coverage.include src/lib/soroban.ts",
+    "build:analyze": "ANALYZE=true next build",
     "playwright": "playwright test --config e2e/playwright.config.ts",
     "contributors:sync": "node scripts/sync-lernza-contributors.mjs",
     "contributors:github-insights": "node scripts/record-lernza-github-coauthors.mjs"
@@ -31,12 +32,11 @@
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "recharts": "^3.9.0",
-    "soroban-client": "^1.0.1",
-    "stellar-plus": "^0.14.4",
     "zustand": "^5.0.14"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.12.1",
+    "@next/bundle-analyzer": "^15.5.18",
     "@chakra-ui/icons": "^2.2.4",
     "@playwright/test": "^1.61.1",
     "@tailwindcss/postcss": "^4.3.2",
