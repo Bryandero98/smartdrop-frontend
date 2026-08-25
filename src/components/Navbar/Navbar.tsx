@@ -81,6 +81,7 @@ function MoreMenu() {
   return (
     <Menu>
       <MenuButton
+        aria-label="More navigation links"
         fontSize="sm"
         fontWeight={isActive ? "semibold" : "medium"}
         color={isActive ? "app.accent" : "app.text"}
