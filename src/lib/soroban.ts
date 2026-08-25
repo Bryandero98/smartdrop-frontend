@@ -1628,26 +1628,29 @@ export class SorobanService {
     offset: number,
     limit: number,
     sortKey: LeaderboardSortKey = 'credits',
+    search?: string,
   ): Promise<LeaderboardPage> {
     if (LEADERBOARD_API_URL) {
       try {
-        return await this.fetchLeaderboardFromApi(offset, limit, sortKey);
+        return await this.fetchLeaderboardFromApi(offset, limit, sortKey, search);
       } catch (err) {
         console.warn('[SmartDrop] leaderboard API failed, falling back to event scan:', err);
       }
     }
-    return this.fetchLeaderboardFromEvents(offset, limit, sortKey);
+    return this.fetchLeaderboardFromEvents(offset, limit, sortKey, search);
   }
 
   private async fetchLeaderboardFromApi(
     offset: number,
     limit: number,
     sortKey: LeaderboardSortKey,
+    search?: string,
   ): Promise<LeaderboardPage> {
     const url = new URL(LEADERBOARD_API_URL);
     url.searchParams.set('offset', String(offset));
     url.searchParams.set('limit', String(limit));
     url.searchParams.set('sort', sortKey);
+    if (search) url.searchParams.set('search', search);
 
     const res = await fetch(url.toString(), { headers: { accept: 'application/json' } });
     if (!res.ok) throw new Error(`Leaderboard API responded ${res.status}`);
@@ -1669,6 +1672,7 @@ export class SorobanService {
     offset: number,
     limit: number,
     sortKey: LeaderboardSortKey,
+    search?: string,
   ): Promise<LeaderboardPage> {
     const poolIds = await this.getLeaderboardPoolIds();
     if (poolIds.length === 0) return { entries: [], total: 0 };
@@ -1736,7 +1740,8 @@ export class SorobanService {
           totalStake: Math.round(stake),
           boostUtilization: null,
         }))
-        .filter((e) => e.totalStake > 0 || e.totalCredits > 0);
+        .filter((e) => e.totalStake > 0 || e.totalCredits > 0)
+        .filter((e) => !search || e.address.toLowerCase().includes(search.toLowerCase()));
 
       all.sort((a, b) =>
         sortKey === 'credits'

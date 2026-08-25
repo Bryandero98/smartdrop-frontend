@@ -1536,6 +1536,56 @@ describe("SorobanService leaderboard", () => {
     });
   });
 
+  it("getLeaderboard filters event-derived rows by a case-insensitive address search", async () => {
+    const otherUser = StrKey.encodeEd25519PublicKey(Buffer.alloc(32, 8));
+    const { service, rpcServer } = makeService({ pool: false });
+    vi.spyOn(service, "getFactoryPools").mockResolvedValue([
+      {
+        id: "factory-pool",
+        contractAddress: POOL_CONTRACT_ID,
+        asset: { code: "XLM", isNative: true },
+        dailyRate: "0",
+        minLockPeriod: 0,
+        totalLocked: "0",
+        totalUsers: 0,
+        isActive: true,
+        createdAt: 1,
+      },
+    ]);
+    rpcServer.getLatestLedger.mockResolvedValue({ sequence: 200_000 });
+    rpcServer.getEvents.mockResolvedValue({
+      events: [
+        makeContractEvent({
+          action: "update_credits",
+          address: USER_PUBLIC_KEY,
+          value: { credits: 120 },
+        }),
+        makeContractEvent({
+          action: "update_credits",
+          address: otherUser,
+          value: 50,
+        }),
+      ],
+    });
+
+    const needle = USER_PUBLIC_KEY.slice(4, 14).toLowerCase();
+    await expect(service.getLeaderboard(0, 10, "credits", needle)).resolves.toEqual({
+      entries: [
+        {
+          address: USER_PUBLIC_KEY,
+          totalCredits: 120,
+          totalStake: 0,
+          boostUtilization: null,
+        },
+      ],
+      total: 1,
+    });
+
+    await expect(
+      service.getLeaderboard(0, 10, "credits", "not-a-real-address"),
+    ).resolves.toEqual({ entries: [], total: 0 });
+  });
+
   it("fetchLeaderboardFromEvents returns an empty page without pool IDs and on RPC errors", async () => {
     const warnSpy = vi
       .spyOn(console, "warn")
@@ -1625,6 +1675,33 @@ describe("SorobanService leaderboard", () => {
 
     expect(fetchSpy).toHaveBeenCalledWith(
       "https://leaderboard.example/rankings?offset=5&limit=2&sort=stake",
+      { headers: { accept: "application/json" } },
+    );
+  });
+
+  it("getLeaderboard forwards a search term as a query param to the API", async () => {
+    const previousApi = process.env.NEXT_PUBLIC_LEADERBOARD_API_URL;
+    process.env.NEXT_PUBLIC_LEADERBOARD_API_URL =
+      "https://leaderboard.example/rankings";
+    vi.resetModules();
+    const { SorobanService: ApiSorobanService } = await import("./soroban");
+    const service = new ApiSorobanService();
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: true,
+      json: async () => ({ entries: [], total: 0 }),
+    } as Response);
+
+    try {
+      await service.getLeaderboard(0, 10, "credits", "GABC123");
+    } finally {
+      if (previousApi === undefined)
+        delete process.env.NEXT_PUBLIC_LEADERBOARD_API_URL;
+      else process.env.NEXT_PUBLIC_LEADERBOARD_API_URL = previousApi;
+      vi.resetModules();
+    }
+
+    expect(fetchSpy).toHaveBeenCalledWith(
+      "https://leaderboard.example/rankings?offset=0&limit=10&sort=credits&search=GABC123",
       { headers: { accept: "application/json" } },
     );
   });
