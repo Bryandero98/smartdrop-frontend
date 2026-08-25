@@ -363,15 +363,15 @@ export default function PoolDetailClient({ poolId }: { poolId: string }) {
               )}
 
               {flow.step === "error" && flow.error && (
-                <Alert status="error" borderRadius="2xl" bg="#2a1414" color="#ff8080" fontSize="sm" aria-live="assertive" aria-atomic="true">
-                  <AlertIcon color="#ff8080" />
+                <Alert status="error" borderRadius="2xl" bg="app.errorBg" color="app.errorFg" fontSize="sm" aria-live="assertive" aria-atomic="true">
+                  <AlertIcon color="app.errorFg" />
                   {flow.error}
                 </Alert>
               )}
 
               {isFeeSponsored && (
-                <Alert status="warning" borderRadius="2xl" bg="#2d2216" color="#ffb86c" fontSize="sm" border="1px solid #7c5c24">
-                  <AlertIcon color="#ffb86c" />
+                <Alert status="warning" borderRadius="2xl" bg="app.feeWarnBg" color="app.feeWarnFg" fontSize="sm" border="1px solid app.feeWarnBorder">
+                  <AlertIcon color="app.feeWarnFg" />
                   Your fees are sponsored for this transaction
                 </Alert>
               )}

@@ -155,6 +155,10 @@ export interface FreighterWalletApi {
     transactionXdr: string,
     options: { networkPassphrase: string; address?: string },
   ) => Promise<FreighterSignTransactionResult>;
+  getNetworkDetails?: () => Promise<{
+    network: string;
+    networkPassphrase: string;
+  }>;
 }
 
 type LockAssetsStep = 'simulating' | 'signing' | 'submitting';
@@ -797,6 +801,29 @@ export class SorobanService {
   }
 
   /**
+   * Verify the wallet's active network matches the expected network passphrase.
+   * Defense-in-depth: runs before signTransaction to catch network mismatches
+   * that UI-level gating might miss (e.g. race conditions).
+   */
+  private async verifyWalletNetwork(walletApi: FreighterWalletApi): Promise<void> {
+    if (!walletApi.getNetworkDetails) return;
+    try {
+      const details = await walletApi.getNetworkDetails();
+      if (details.networkPassphrase !== networkPassphrase) {
+        throw new FreighterError(
+          'FREIGHTER_NETWORK_MISMATCH',
+          `Wallet network mismatch: expected "${networkPassphrase}", got "${details.networkPassphrase}". Switch your Freighter wallet to the correct network.`,
+        );
+      }
+    } catch (err) {
+      if (err instanceof FreighterError) throw err;
+      // If getNetworkDetails fails for other reasons, log and continue —
+      // the signing step will surface its own error if the network is wrong.
+      console.warn('[SmartDrop] Could not verify wallet network:', err);
+    }
+  }
+
+  /**
    * Initialize the service with contract addresses
    */
   async initialize(factoryAddress?: string) {
@@ -1064,6 +1091,7 @@ export class SorobanService {
       }
 
       callbacks?.onStep?.('signing');
+      await this.verifyWalletNetwork(walletApi);
       const signedTransaction = getSignedTransactionXdr(
         await walletApi.signTransaction(preparedTransaction.toXDR(), {
           networkPassphrase,
@@ -1216,6 +1244,7 @@ export class SorobanService {
       }
 
       callbacks?.onStep?.('signing');
+      await this.verifyWalletNetwork(walletApi);
       const signedTransaction = getSignedTransactionXdr(
         await walletApi.signTransaction(preparedTransaction.toXDR(), {
           networkPassphrase,
@@ -1347,6 +1376,7 @@ export class SorobanService {
 
       const preparedTransaction = rpc.assembleTransaction(transaction, simulation).build();
 
+      await this.verifyWalletNetwork(walletApi);
       const signedTransaction = getSignedTransactionXdr(
         await walletApi.signTransaction(preparedTransaction.toXDR(), {
           networkPassphrase,
