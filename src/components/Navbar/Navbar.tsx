@@ -1,12 +1,21 @@
 "use client";
 
 import {
+  Drawer,
+  DrawerBody,
+  DrawerCloseButton,
+  DrawerContent,
+  DrawerHeader,
+  DrawerOverlay,
+  IconButton,
   Menu,
   MenuButton,
   MenuItem,
   MenuList,
+  VStack,
+  useDisclosure,
 } from "@chakra-ui/react";
-import { ChevronDownIcon } from "@chakra-ui/icons";
+import { ChevronDownIcon, HamburgerIcon } from "@chakra-ui/icons";
 import { useStellarWallet } from "@/context/StellarWalletContext";
 import NextLink from "next/link";
 import { usePathname } from "next/navigation";
@@ -40,12 +49,21 @@ function Logo() {
   );
 }
 
-function NavLink({ href, children }: { href: string; children: React.ReactNode }) {
+function NavLink({
+  href,
+  children,
+  onClick,
+}: {
+  href: string;
+  children: React.ReactNode;
+  onClick?: () => void;
+}) {
   const pathname = usePathname();
   const isActive = pathname === href;
   return (
     <NextLink
       href={href}
+      onClick={onClick}
       className={`text-sm transition-colors hover:text-[color:var(--chakra-colors-app-accent)] ${
         isActive
           ? "font-semibold text-[color:var(--chakra-colors-app-accent)]"
@@ -105,9 +123,46 @@ function formatCount(value: number | undefined | null): string {
   return value || value === 0 ? value.toLocaleString() : "—";
 }
 
+function MobileNavDrawer({
+  isOpen,
+  onClose,
+  isConnected,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  isConnected: boolean;
+}) {
+  return (
+    <Drawer isOpen={isOpen} placement="right" onClose={onClose}>
+      <DrawerOverlay />
+      <DrawerContent bg="app.surface">
+        <DrawerCloseButton color="app.text" />
+        <DrawerHeader borderBottom="1px solid" borderColor="app.border">
+          <Logo />
+        </DrawerHeader>
+        <DrawerBody pt={6}>
+          <VStack align="stretch" spacing={5} fontSize="lg">
+            <NavLink href="/" onClick={onClose}>Home</NavLink>
+            {isConnected && <NavLink href="/farm" onClick={onClose}>Farm</NavLink>}
+            <NavLink href="/history" onClick={onClose}>History</NavLink>
+            {isConnected && <NavLink href="/leaderboard" onClick={onClose}>Leaderboard</NavLink>}
+            <NavLink href="/contributors" onClick={onClose}>Contributors</NavLink>
+            {MORE_LINKS.map((link) => (
+              <NavLink key={link.href} href={link.href} onClick={onClose}>
+                {link.label}
+              </NavLink>
+            ))}
+          </VStack>
+        </DrawerBody>
+      </DrawerContent>
+    </Drawer>
+  );
+}
+
 export default function Navbar() {
   const { isConnected, publicKey } = useStellarWallet();
   const { data: stats } = usePlatformStats();
+  const { isOpen, onOpen, onClose } = useDisclosure();
 
   return (
     <nav
@@ -120,12 +175,20 @@ export default function Navbar() {
       <div className="mx-auto flex w-full max-w-[1400px] flex-col gap-3 px-4 py-4 lg:h-20 lg:min-h-20 lg:w-[95%] lg:flex-row lg:items-center lg:justify-between lg:gap-4 lg:px-0 lg:py-0">
         <div className="flex w-full items-center justify-between lg:w-auto">
           <Logo />
-          <div className="block lg:hidden">
+          <div className="flex items-center gap-2 lg:hidden">
             <ThemeToggle />
+            <IconButton
+              aria-label="Open menu"
+              icon={<HamburgerIcon />}
+              variant="ghost"
+              color="app.text"
+              size="sm"
+              onClick={onOpen}
+            />
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-4 lg:gap-7">
+        <div className="hidden items-center gap-4 lg:flex lg:gap-7">
           <NavLink href="/">Home</NavLink>
           {isConnected && <NavLink href="/farm">Farm</NavLink>}
           <NavLink href="/history">History</NavLink>
@@ -149,6 +212,8 @@ export default function Navbar() {
           </div>
         </div>
       </div>
+
+      <MobileNavDrawer isOpen={isOpen} onClose={onClose} isConnected={isConnected} />
     </nav>
   );
 }
