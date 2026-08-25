@@ -4,6 +4,7 @@
  */
 
 import {
+  Account,
   Contract,
   TransactionBuilder,
   BASE_FEE,
@@ -1484,7 +1485,7 @@ export class SorobanService {
   async getPoolHistory(
     poolId: string,
     days: number = 7,
-  ): Promise<{ date: string; tvl: string; truncated?: boolean }> {
+  ): Promise<{ date: string; tvl: string; truncated?: boolean }[]> {
     try {
       const latest = await this.rpcServer.getLatestLedger();
       // ~5 s per ledger; days * 86400 / 5
