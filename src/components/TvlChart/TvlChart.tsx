@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Box, Skeleton, Text } from "@chakra-ui/react";
+import { Box, Skeleton, Text, useBreakpointValue } from "@chakra-ui/react";
 import {
   AreaChart,
   Area,
@@ -26,6 +26,9 @@ interface TvlChartProps {
 export default function TvlChart({ poolId }: TvlChartProps) {
   const [data, setData] = useState<TvlDataPoint[]>([]);
   const [loading, setLoading] = useState(true);
+  // Issue #214: a fixed 180px is tall relative to viewport width on small
+  // phones; shrink it below the sm breakpoint instead.
+  const chartHeight = useBreakpointValue({ base: 140, sm: 180 }, { fallback: "sm" }) ?? 180;
 
   useEffect(() => {
     let cancelled = false;
@@ -47,13 +50,13 @@ export default function TvlChart({ poolId }: TvlChartProps) {
   }, [poolId]);
 
   if (loading) {
-    return <Skeleton height="180px" borderRadius="2xl" startColor="app.border" endColor="app.surfaceHover" />;
+    return <Skeleton height={`${chartHeight}px`} borderRadius="2xl" startColor="app.border" endColor="app.surfaceHover" />;
   }
 
   if (data.length === 0) {
     return (
       <Box
-        h="180px"
+        h={`${chartHeight}px`}
         display="flex"
         alignItems="center"
         justifyContent="center"
@@ -69,7 +72,7 @@ export default function TvlChart({ poolId }: TvlChartProps) {
   }
 
   return (
-    <ResponsiveContainer width="100%" height={180}>
+    <ResponsiveContainer width="100%" height={chartHeight}>
       <AreaChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
         <defs>
           <linearGradient id="tvlGradient" x1="0" y1="0" x2="0" y2="1">
