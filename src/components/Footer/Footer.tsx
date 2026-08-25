@@ -33,7 +33,7 @@ export default function Footer() {
       >
         Contributors
       </ChakraLink>
-      <Text px={{ base: 0, md: 8 }}>© 2026</Text>
+      <Text px={{ base: 0, md: 8 }}>© {new Date().getFullYear()}</Text>
     </Flex>
   );
 }
