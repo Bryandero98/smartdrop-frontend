@@ -54,7 +54,9 @@ export interface LeaderboardRow {
   address: string;
   totalCredits: number;
   totalStake: number;
-  boostUtilization: number;
+  /** null when the data source (e.g. the event-scan fallback) cannot derive
+   * boost utilization — distinct from a genuine 0% (issue #142). */
+  boostUtilization: number | null;
 }
 
 export interface LeaderboardPage {
@@ -1691,12 +1693,17 @@ export class SorobanService {
         else if (action === 'update_credits') row.credits = amount;
       }
 
+      // Issue #142: no boost-related event is scanned above (only
+      // lock_assets/unlock_assets/update_credits), so boost utilization
+      // cannot be derived from on-chain events at all. Report it as
+      // unavailable (null) rather than a fabricated 0 — the API path
+      // (fetchLeaderboardFromApi) still returns a real value.
       const all: LeaderboardRow[] = Array.from(agg.entries())
         .map(([address, { stake, credits }]) => ({
           address,
           totalCredits: Math.round(credits),
           totalStake: Math.round(stake),
-          boostUtilization: 0,
+          boostUtilization: null,
         }))
         .filter((e) => e.totalStake > 0 || e.totalCredits > 0);
 
