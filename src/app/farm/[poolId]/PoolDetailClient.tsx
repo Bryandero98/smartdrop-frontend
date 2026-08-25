@@ -354,7 +354,7 @@ export default function PoolDetailClient({ poolId }: { poolId: string }) {
               </Flex>
 
               {isPending && (
-                <Flex align="center" gap={3} bg="app.inputBg" borderRadius="2xl" p={4} border="1px solid" borderColor="app.border">
+                <Flex align="center" gap={3} bg="app.inputBg" borderRadius="2xl" p={4} border="1px solid" borderColor="app.border" aria-live="polite" aria-atomic="true">
                   <Spinner size="sm" color="app.accent" />
                   <Text fontSize="sm" color="app.muted">
                     {DEPOSIT_STEP_LABEL[flow.step]}
@@ -363,7 +363,7 @@ export default function PoolDetailClient({ poolId }: { poolId: string }) {
               )}
 
               {flow.step === "error" && flow.error && (
-                <Alert status="error" borderRadius="2xl" bg="#2a1414" color="#ff8080" fontSize="sm">
+                <Alert status="error" borderRadius="2xl" bg="#2a1414" color="#ff8080" fontSize="sm" aria-live="assertive" aria-atomic="true">
                   <AlertIcon color="#ff8080" />
                   {flow.error}
                 </Alert>

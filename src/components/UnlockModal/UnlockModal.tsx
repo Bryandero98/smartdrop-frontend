@@ -34,7 +34,7 @@ import {
     Spinner,
     Text,
 } from "@chakra-ui/react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 type UnlockStep =
   | "idle"
@@ -66,6 +66,7 @@ export default function UnlockModal() {
   const [step, setStep] = useState<UnlockStep>("idle");
   const [error, setError] = useState<string | null>(null);
   const [txHash, setTxHash] = useState<string | null>(null);
+  const amountInputRef = useRef<HTMLInputElement>(null);
   const selectedPoolContractId = position?.contractAddress || poolContractId;
 
   const unlockAt = position ? unlockAvailableAt(position) : 0;
@@ -89,13 +90,11 @@ export default function UnlockModal() {
       setError(null);
       setTxHash(null);
 
-      // Focus on amount input when modal opens for better accessibility
+      // Focus the amount input using a scoped ref instead of document.querySelector.
+      // Use a short delay to allow Chakra's Modal animation to complete.
       setTimeout(() => {
-        const amountInput = document.querySelector('input[type="number"]') as HTMLInputElement;
-        if (amountInput) {
-          amountInput.focus();
-          amountInput.select();
-        }
+        amountInputRef.current?.focus();
+        amountInputRef.current?.select();
       }, 100);
     }
   }, [isUnlock, position]);
@@ -329,6 +328,7 @@ export default function UnlockModal() {
                 </Text>
                 <Box position="relative" w="100%">
                   <Input
+                    ref={amountInputRef}
                     type="number"
                     borderRadius="2xl"
                     placeholder="Amount"
@@ -396,7 +396,7 @@ export default function UnlockModal() {
                   <Flex align="center" gap={3} w="full">
                     <Spinner size="sm" color="app.accent" />
                     <Box>
-                      <Text fontSize="sm" fontWeight="semibold">
+                      <Text fontSize="sm" fontWeight="semibold" aria-live="polite" aria-atomic="true">
                         {UNLOCK_STEP_LABEL[step]}
                       </Text>
                       {step === "confirming" && txHash && explorerUrl && (
@@ -410,7 +410,7 @@ export default function UnlockModal() {
               )}
 
               {step === "timeout" && (
-                <Alert status="warning" borderRadius="2xl" bg="#2a2412" color="#f6c453">
+                <Alert status="warning" borderRadius="2xl" bg="#2a2412" color="#f6c453" aria-live="assertive" aria-atomic="true">
                   <AlertIcon color="#f6c453" />
                   <Flex direction="column" gap={1}>
                     <Text>Confirmation is taking longer than expected.</Text>
@@ -446,6 +446,8 @@ export default function UnlockModal() {
                   bg="#2a1414"
                   color="#ff8080"
                   fontSize="sm"
+                  aria-live="assertive"
+                  aria-atomic="true"
                 >
                   <AlertIcon color="#ff8080" />
                   {error}
