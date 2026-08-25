@@ -11,6 +11,7 @@ import { useStellarWallet } from "@/context/StellarWalletContext";
 import NextLink from "next/link";
 import { usePathname } from "next/navigation";
 import ThemeToggle from "@/components/ThemeToggle/ThemeToggle";
+import { usePlatformStats } from "@/hooks/useSorobanQuery";
 
 const MORE_LINKS = [
   { href: "/prices", label: "Prices" },
@@ -100,8 +101,13 @@ function StatPill({ label, value, pulse = false }: { label: string; value: strin
   );
 }
 
+function formatCount(value: number | undefined | null): string {
+  return value || value === 0 ? value.toLocaleString() : "—";
+}
+
 export default function Navbar() {
   const { isConnected, publicKey } = useStellarWallet();
+  const { data: stats } = usePlatformStats();
 
   return (
     <nav
@@ -133,9 +139,9 @@ export default function Navbar() {
             <StatPill label="Wallet" value={shortenStellarAddress(publicKey)} />
           ) : (
             <>
-              <StatPill label="Online" value="213" pulse />
-              <StatPill label="Users" value="30,738" />
-              <StatPill label="TVL" value="$302M" />
+              <StatPill label="Online" value={formatCount(stats?.onlineUsers)} pulse />
+              <StatPill label="Users" value={formatCount(stats?.totalUsers)} />
+              <StatPill label="TVL" value={stats?.tvl || "—"} />
             </>
           )}
           <div className="hidden lg:block">
