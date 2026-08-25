@@ -21,8 +21,10 @@ import {
   horizonUrl,
   networkPassphrase,
   sorobanRpcUrl,
+  simulationAccount,
+  stellarNetwork,
 } from '@/config';
-import { SecurityError } from './error-handler';
+import { ConfigError, FreighterError, SecurityError } from './error-handler';
 import { fetchAccountBalances } from './stellar';
 import {
   bigintToDisplayAmount,
@@ -720,11 +722,44 @@ export class SorobanService {
   private rpcServer: rpc.Server;
   private factoryContract?: Contract;
   private poolContracts: Map<string, Contract> = new Map();
+  private cachedSimulationAccount?: Awaited<ReturnType<rpc.Server['getAccount']>>;
+  private simulationAccountAddress: string;
 
   constructor() {
     this.rpcServer = rpcServer;
+    this.simulationAccountAddress = simulationAccount;
     if (factoryContractId) {
       this.factoryContract = new Contract(factoryContractId);
+    }
+  }
+
+  /**
+   * Returns a cached Account object for read-only simulation calls.
+   * Fetches from RPC on first call, then reuses the cached version
+   * (sequence number is refreshed per call by TransactionBuilder).
+   */
+  private async getSimulationAccount(): Promise<Awaited<ReturnType<rpc.Server['getAccount']>>> {
+    if (this.cachedSimulationAccount) {
+      // Refresh sequence number for next TransactionBuilder.build()
+      const fresh = await this.rpcServer.getAccount(this.simulationAccountAddress);
+      this.cachedSimulationAccount = fresh;
+      return fresh;
+    }
+
+    if (!this.simulationAccountAddress) {
+      throw new ConfigError(
+        'NEXT_PUBLIC_SIMULATION_ACCOUNT is not configured. Set it to a funded Stellar account on the active network.',
+      );
+    }
+
+    try {
+      this.cachedSimulationAccount = await this.rpcServer.getAccount(this.simulationAccountAddress);
+      return this.cachedSimulationAccount;
+    } catch (err) {
+      this.cachedSimulationAccount = undefined;
+      throw new ConfigError(
+        `Simulation account ${this.simulationAccountAddress} could not be resolved: ${err instanceof Error ? err.message : 'unknown error'}. Fund this account or set NEXT_PUBLIC_SIMULATION_ACCOUNT to a funded account on ${stellarNetwork}.`,
+      );
     }
   }
 
@@ -768,9 +803,7 @@ export class SorobanService {
     try {
       const call = this.factoryContract.call("get_pools");
 
-      const account = await this.rpcServer.getAccount(
-        'GBQ3WPTHKJ5XKWLOKUZJLZL2GVXR6RWQCXUVDQZWM7Q2YNLDRVGM5ZWJ'
-      );
+      const account = await this.getSimulationAccount();
       const transaction = new TransactionBuilder(account, {
         fee: BASE_FEE,
         networkPassphrase,
@@ -816,9 +849,7 @@ export class SorobanService {
         Address.fromString(userAddress).toScVal(),
       );
 
-      const account = await this.rpcServer.getAccount(
-        'GBQ3WPTHKJ5XKWLOKUZJLZL2GVXR6RWQCXUVDQZWM7Q2YNLDRVGM5ZWJ'
-      );
+      const account = await this.getSimulationAccount();
       const transaction = new TransactionBuilder(account, {
         fee: BASE_FEE,
         networkPassphrase,
@@ -864,9 +895,7 @@ export class SorobanService {
         Address.fromString(userAddress).toScVal(),
       );
 
-      const account = await this.rpcServer.getAccount(
-        'GBQ3WPTHKJ5XKWLOKUZJLZL2GVXR6RWQCXUVDQZWM7Q2YNLDRVGM5ZWJ'
-      );
+      const account = await this.getSimulationAccount();
       const transaction = new TransactionBuilder(account, {
         fee: BASE_FEE,
         networkPassphrase,
@@ -954,6 +983,7 @@ export class SorobanService {
     amount: string,
     walletApi: FreighterWalletApi,
     callbacks?: LockAssetsCallbacks,
+    isStillConnected?: () => boolean,
   ): Promise<TransactionResult> {
     try {
       // Check if sponsored fee-bump is needed
@@ -991,6 +1021,14 @@ export class SorobanService {
       ]);
 
       const preparedTransaction = rpc.assembleTransaction(transaction, simulation).build();
+
+      // Guard: verify wallet is still connected before requesting signature (#70)
+      if (isStillConnected && !isStillConnected()) {
+        throw new FreighterError(
+          'FREIGHTER_DISCONNECTED_MID_FLOW',
+          'Wallet disconnected during transaction. Please reconnect and try again.',
+        );
+      }
 
       callbacks?.onStep?.('signing');
       const signedTransaction = getSignedTransactionXdr(
@@ -1081,6 +1119,7 @@ export class SorobanService {
     amount: string,
     walletApi: FreighterWalletApi,
     callbacks?: UnlockAssetsCallbacks,
+    isStillConnected?: () => boolean,
   ): Promise<TransactionResult> {
     const poolContract = this.resolvePoolContract(poolId);
 
@@ -1134,6 +1173,14 @@ export class SorobanService {
       ]);
 
       const preparedTransaction = rpc.assembleTransaction(transaction, simulation).build();
+
+      // Guard: verify wallet is still connected before requesting signature (#70)
+      if (isStillConnected && !isStillConnected()) {
+        throw new FreighterError(
+          'FREIGHTER_DISCONNECTED_MID_FLOW',
+          'Wallet disconnected during transaction. Please reconnect and try again.',
+        );
+      }
 
       callbacks?.onStep?.('signing');
       const signedTransaction = getSignedTransactionXdr(
@@ -1745,16 +1792,18 @@ export const lockAssets = async ({
   walletApi,
   onHash,
   onStep,
+  isStillConnected,
 }: {
   poolContractId: string;
   publicKey: string;
   amount: string;
   walletApi: FreighterWalletApi;
+  isStillConnected?: () => boolean;
 } & LockAssetsCallbacks) =>
   sorobanService.lockAssets(poolContractId, publicKey, amount, walletApi, {
     onHash,
     onStep,
-  });
+  }, isStillConnected);
 
 export const unlockAssets = async ({
   poolContractId,
@@ -1763,11 +1812,13 @@ export const unlockAssets = async ({
   walletApi,
   onHash,
   onStep,
+  isStillConnected,
 }: {
   poolContractId: string;
   publicKey: string;
   amount: string;
   walletApi: FreighterWalletApi;
+  isStillConnected?: () => boolean;
 } & UnlockAssetsCallbacks) => {
   // Convert display-unit amount to integer stroops before passing as i128.
   // 1 display unit = 10,000,000 stroops (Stellar's fixed-point precision).
@@ -1775,7 +1826,7 @@ export const unlockAssets = async ({
   return sorobanService.unlockAssets(poolContractId, publicKey, stroops, walletApi, {
     onHash,
     onStep,
-  });
+  }, isStillConnected);
 };
 
 export const stellarExpertTxUrl = (hash: string, network: string) =>

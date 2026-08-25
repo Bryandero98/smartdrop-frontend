@@ -3,7 +3,7 @@
  * Provides caching, error handling, and automatic refetching
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   getStellarBalance,
@@ -177,6 +177,8 @@ export const useLockAssets = (options?: {
   const { walletApi, publicKey } = useStellarWallet();
   const queryClient = useQueryClient();
   const toast = useToast();
+  const walletApiRef = useRef(walletApi);
+  walletApiRef.current = walletApi;
 
   return useMutation({
     mutationFn: async ({
@@ -198,6 +200,7 @@ export const useLockAssets = (options?: {
           onHash: options?.onHash,
           onStep: options?.onStep,
         },
+        () => walletApiRef.current === walletApi,
       );
       return result;
     },
@@ -248,6 +251,8 @@ export const useUnlockAssets = () => {
   const { walletApi, publicKey } = useStellarWallet();
   const queryClient = useQueryClient();
   const toast = useToast();
+  const walletApiRef = useRef(walletApi);
+  walletApiRef.current = walletApi;
 
   return useMutation({
     mutationFn: async ({
@@ -260,7 +265,14 @@ export const useUnlockAssets = () => {
       if (!walletApi || !publicKey) {
         throw new Error('Wallet not connected');
       }
-      return sorobanService.unlockAssets(poolId, publicKey, amount, walletApi);
+      return sorobanService.unlockAssets(
+        poolId,
+        publicKey,
+        amount,
+        walletApi,
+        undefined,
+        () => walletApiRef.current === walletApi,
+      );
     },
     onSuccess: (result: TransactionResult, variables) => {
       if (result.success) {

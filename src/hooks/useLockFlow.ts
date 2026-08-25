@@ -8,7 +8,7 @@
  * the step-by-step UI without any business logic leaking into the component.
  */
 
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { lockAssets, type FreighterWalletApi } from "@/lib/soroban";
 import { normalizeError } from "@/lib/error-handler";
@@ -46,6 +46,8 @@ export function useLockFlow({
   const [step, setStep] = useState<DepositStep>("idle");
   const [record, setRecord] = useState<DepositRecord | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const walletApiRef = useRef(walletApi);
+  walletApiRef.current = walletApi;
 
   const reset = useCallback(() => {
     setStep("idle");
@@ -78,6 +80,7 @@ export function useLockFlow({
           amount: String(displayAmount),
           walletApi,
           onStep: setStep,
+          isStillConnected: () => walletApiRef.current === walletApi,
         });
 
         if (!result.success) {
