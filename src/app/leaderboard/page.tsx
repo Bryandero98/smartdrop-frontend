@@ -305,8 +305,8 @@ export default function LeaderboardPage() {
                       <Td py={4} isNumeric color="app.text">
                         {entry.totalStake.toLocaleString()}
                       </Td>
-                      <Td py={4} pr={5} isNumeric color="app.text">
-                        {entry.boostUtilization}%
+                      <Td py={4} pr={5} isNumeric color={entry.boostUtilization == null ? "app.muted" : "app.text"}>
+                        {entry.boostUtilization == null ? "—" : `${entry.boostUtilization}%`}
                       </Td>
                     </Tr>
                   );

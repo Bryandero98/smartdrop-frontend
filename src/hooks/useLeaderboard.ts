@@ -7,7 +7,8 @@ export type LeaderboardEntry = {
   address: string;
   totalCredits: number;
   totalStake: number;
-  boostUtilization: number;
+  /** null when unavailable in the current data source (issue #142). */
+  boostUtilization: number | null;
 };
 
 export const PAGE_SIZE = 10;
