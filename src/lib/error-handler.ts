@@ -416,7 +416,7 @@ export async function withRetry<T>(
  * In production, can send to an error tracking service.
  */
 export class ErrorLogger {
-  private isDevelopment = typeof window !== "undefined" && !window.location.hostname.includes("localhost") === false;
+  private isDevelopment = process.env.NODE_ENV === "development";
 
   log(error: SmartDropError, context?: string): void {
     const logData = {
@@ -426,9 +426,8 @@ export class ErrorLogger {
       ...error.getLogContext(),
     };
 
-    if (this.isDevelopment) {
-      console.error("[SmartDrop Error]", logData);
-    }
+    // Always log errors to console regardless of environment for visibility
+    console.error("[SmartDrop Error]", logData);
 
     // TODO: Send to error tracking service (Sentry, LogRocket, etc.) in production
     // if (!this.isDevelopment) {

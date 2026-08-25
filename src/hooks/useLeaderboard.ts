@@ -18,9 +18,10 @@ const SEARCH_DEBOUNCE_MS = 300;
 export function fetchLeaderboard(
   offset: number,
   limit: number,
-  sortKey: SortKey
+  sortKey: SortKey,
+  search?: string
 ): Promise<{ entries: LeaderboardEntry[]; total: number }> {
-  return sorobanService.getLeaderboard(offset, limit, sortKey);
+  return sorobanService.getLeaderboard(offset, limit, sortKey, search);
 }
 
 export function useLeaderboard(publicKey: string | null) {
@@ -44,7 +45,7 @@ export function useLeaderboard(publicKey: string | null) {
 
   const refresh = useCallback(() => {
     setIsLoading(true);
-    fetchLeaderboard(offset, PAGE_SIZE, sortKey)
+    fetchLeaderboard(offset, PAGE_SIZE, sortKey, searchQuery || undefined)
       .then(({ entries, total }) => {
         setEntries(entries);
         setTotal(total);
@@ -55,7 +56,7 @@ export function useLeaderboard(publicKey: string | null) {
         setTotal(0);
       })
       .finally(() => setIsLoading(false));
-  }, [offset, sortKey]);
+  }, [offset, sortKey, searchQuery]);
 
   useEffect(() => {
     refresh();
@@ -63,11 +64,7 @@ export function useLeaderboard(publicKey: string | null) {
     return () => clearInterval(id);
   }, [refresh]);
 
-  const paged = searchQuery
-    ? entries.filter((e) =>
-        e.address.toLowerCase().includes(searchQuery.toLowerCase())
-      )
-    : entries;
+  const paged = entries;
 
   const connectedRank = (() => {
     if (!publicKey) return 0;
@@ -80,6 +77,13 @@ export function useLeaderboard(publicKey: string | null) {
     setPageState(1);
   };
 
+  // Reset to page 1 when search query changes
+  useEffect(() => {
+    if (searchQuery) {
+      setPageState(1);
+    }
+  }, [searchQuery]);
+
   return {
     paged,
     isLoading,
@@ -91,7 +95,7 @@ export function useLeaderboard(publicKey: string | null) {
     totalPages,
     setPage: setPageState,
     connectedRank,
-    filteredCount: searchQuery ? paged.length : total,
+    filteredCount: total,
     lastRefreshed,
     refresh,
   };

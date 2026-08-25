@@ -91,6 +91,7 @@ function StatCard({
 
 export default function PoolDetailClient({ poolId }: { poolId: string }) {
   const [rawAmount, setRawAmount] = useState("0");
+  const [showConfirmation, setShowConfirmation] = useState(false);
 
   // Shares the same cache/staleTime/refetchInterval as the Farm page's
   // pool list instead of an independent, uncached getFactoryPools() call
@@ -151,7 +152,21 @@ export default function PoolDetailClient({ poolId }: { poolId: string }) {
     if (isDepositPending(flow.step)) return;
     flow.reset();
     setRawAmount("0");
+    setShowConfirmation(false);
     onClose();
+  };
+
+  const handleLockClick = () => {
+    setShowConfirmation(true);
+  };
+
+  const handleConfirmLock = () => {
+    setShowConfirmation(false);
+    void flow.execute(displayAmount);
+  };
+
+  const handleCancelLock = () => {
+    setShowConfirmation(false);
   };
 
   const displayAmount = parseFloat(rawAmount);
@@ -395,7 +410,7 @@ export default function PoolDetailClient({ poolId }: { poolId: string }) {
                 isDisabled={
                   !amountValid || !isConnected || isPending || isNetworkMismatch
                 }
-                onClick={() => void flow.execute(displayAmount)}
+                onClick={handleLockClick}
                 w="full"
               >
                 {isPending ? (
@@ -409,6 +424,50 @@ export default function PoolDetailClient({ poolId }: { poolId: string }) {
                   `Lock ${amountValid ? displayAmount : ""} ${pool?.asset.code ?? ""}`
                 )}
               </Button>
+
+              {showConfirmation && (
+                <Alert status="warning" borderRadius="2xl" bg="app.warningBg" color="app.warningFg" fontSize="sm" p={4}>
+                  <Flex direction="column" gap={3} w="full">
+                    <Flex align="flex-start" gap={2}>
+                      <AlertIcon color="app.warningFg" mt={0.5} />
+                      <Box flex="1">
+                        <Text fontWeight="semibold" mb={1}>
+                          Confirm Lock Transaction
+                        </Text>
+                        <Text fontSize="xs">
+                          You are about to lock {displayAmount} {pool?.asset.code ?? ""} for a minimum period of{" "}
+                          {pool
+                            ? pool.minLockPeriod >= 86400
+                              ? `${Math.floor(pool.minLockPeriod / 86400)} day${Math.floor(pool.minLockPeriod / 86400) > 1 ? "s" : ""}`
+                              : `${Math.floor(pool.minLockPeriod / 3600)} hour${Math.floor(pool.minLockPeriod / 3600) > 1 ? "s" : ""}`
+                            : ""}
+                          . This action cannot be reversed until the lock period expires.
+                        </Text>
+                      </Box>
+                    </Flex>
+                    <Flex gap={2} justify="flex-end">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={handleCancelLock}
+                        isDisabled={isPending}
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        size="sm"
+                        bg="app.accent"
+                        color="app.onAccent"
+                        _hover={{ opacity: 0.9 }}
+                        onClick={handleConfirmLock}
+                        isDisabled={isPending}
+                      >
+                        Confirm Lock
+                      </Button>
+                    </Flex>
+                  </Flex>
+                </Alert>
+              )}
 
               {flow.step === "error" && (
                 <Button variant="ghost" size="sm" color="app.muted" onClick={flow.reset}>
