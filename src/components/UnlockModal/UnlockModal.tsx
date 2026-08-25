@@ -420,6 +420,10 @@ export default function UnlockModal() {
               {amountValid && (
                 <Box border="1px solid #303030" borderRadius="2xl" p={3}>
                   {infoRow(
+                    "Estimated receive",
+                    `${numericAmount.toFixed(4)} ${position.symbol}`,
+                  )}
+                  {infoRow(
                     "Remaining stake",
                     `${remainingStake.toFixed(4)} ${position.symbol}`,
                   )}

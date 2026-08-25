@@ -220,6 +220,44 @@ export function StellarWalletProvider({ children }: { children: ReactNode }) {
     setNetworkName(null);
   }, []);
 
+  // Periodic health check for Freighter extension (#222)
+  useEffect(() => {
+    if (!publicKey) return undefined;
+
+    const checkFreighterHealth = async () => {
+      try {
+        const freighter = await import("@stellar/freighter-api");
+        const connected = await freighter.isConnected();
+        
+        // If extension is no longer available, disconnect gracefully
+        if (!connected.isConnected || connected.error) {
+          disconnect();
+          return;
+        }
+
+        // Verify we can still get the address
+        const addr = await freighter.getAddress();
+        if (addr.error || !addr.address) {
+          disconnect();
+          return;
+        }
+
+        // If address changed, update it
+        if (addr.address !== publicKey) {
+          setPublicKey(addr.address);
+        }
+      } catch {
+        // Extension error or removal - disconnect
+        disconnect();
+      }
+    };
+
+    // Check every 30 seconds
+    const interval = setInterval(checkFreighterHealth, 30000);
+    
+    return () => clearInterval(interval);
+  }, [publicKey, disconnect]);
+
   // NOTE: this listener does not fire when a user opens the Freighter
   // extension popup while this tab stays visible — extension popups are a
   // separate top-level browsing context, not an overlay that hides the
