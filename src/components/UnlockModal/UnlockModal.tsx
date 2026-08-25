@@ -13,9 +13,12 @@ import {
     unlockAssets,
     computePartialUnlockPreview,
     getContractErrorMessage,
+    type UserPosition,
 } from "@/lib/soroban";
+import { QUERY_KEYS } from "@/hooks/useSorobanQuery";
 import { useFarmStore } from "@/store/farmStore";
 import { unlockAvailableAt } from "@/types/farm";
+import { useQueryClient } from "@tanstack/react-query";
 import {
     Alert,
     AlertIcon,
@@ -62,6 +65,7 @@ export default function UnlockModal() {
   const position = selectedPosition;
   const { publicKey, walletApi, isNetworkMismatch } = useStellarWallet();
   const toast = useErrorHandler();
+  const queryClient = useQueryClient();
   const [amount, setAmount] = useState("");
   const [step, setStep] = useState<UnlockStep>("idle");
   const [error, setError] = useState<string | null>(null);
@@ -168,6 +172,24 @@ export default function UnlockModal() {
       userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : 'unknown',
     });
 
+    // Snapshot the current position so we can rollback on failure.
+    const positionKey = [QUERY_KEYS.USER_POSITION, selectedPoolContractId, publicKey];
+    const previousPosition = queryClient.getQueryData<UserPosition>(positionKey);
+
+    // Optimistically reduce the locked amount in the cache so the UI
+    // reflects the unlock immediately, before the ledger confirms.
+    if (previousPosition) {
+      const prevAmount = Number(previousPosition.amount);
+      const unlockedAmount = Math.min(numericAmount, prevAmount);
+      const newAmount = Math.max(0, prevAmount - unlockedAmount);
+      queryClient.setQueryData<UserPosition>(positionKey, {
+        ...previousPosition,
+        amount: String(newAmount),
+        isLocked: false,
+        unlockableAt: 0,
+      });
+    }
+
     try {
       const result = await unlockAssets({
         poolContractId: selectedPoolContractId,
@@ -181,6 +203,13 @@ export default function UnlockModal() {
       setTxHash(hash || null);
 
       if (!result.success) {
+        // Roll back the optimistic update for definitive failures.
+        // On TIMEOUT the transaction may still land, so keep the
+        // optimistic state — the next refetch will correct it.
+        if (result.status !== "TIMEOUT" && previousPosition) {
+          queryClient.setQueryData<UserPosition>(positionKey, previousPosition);
+        }
+
         const userMessage =
           result.status === "TIMEOUT"
             ? "Confirmation is taking longer than expected. You can check the transaction manually on Stellar Expert."
@@ -213,9 +242,19 @@ export default function UnlockModal() {
         partial: numericAmount < position.lockedAmount,
         processingTime: Date.now() - trackingStartTime,
       });
-      // TODO(#28): optimistic queryClient.getQueryData update attaches here pending
-      //            maintainer confirmation — see issue discussion
+
+      // Invalidate so the next refetch picks up the real ledger state
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.USER_POSITION, selectedPoolContractId] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.USER_POSITION, 'all', publicKey] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.USER_CREDITS, selectedPoolContractId] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.POOLS] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PLATFORM_STATS] });
     } catch (err) {
+      // Roll back the optimistic update on thrown errors
+      if (previousPosition) {
+        queryClient.setQueryData<UserPosition>(positionKey, previousPosition);
+      }
+
       const normalizedError = toast.handleError(err, "Unlock Transaction");
       setError(normalizedError.userMessage);
       setStep("error");

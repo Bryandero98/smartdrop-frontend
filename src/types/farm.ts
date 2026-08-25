@@ -21,6 +21,8 @@ export type FarmPosition = {
   lockedAt: number;
   /** Minimum lock period (seconds) before the position can be unlocked. */
   lockPeriodSeconds: number;
+  /** Current boost allocation percentage (0-100) if set. */
+  boostAllocation?: number;
 };
 
 /** Epoch (ms) at which a position becomes eligible for unlock. */
