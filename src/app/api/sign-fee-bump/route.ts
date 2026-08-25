@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { Keypair, TransactionBuilder, Transaction } from '@stellar/stellar-sdk';
-import { buildFeeBumpTransaction } from '@/lib/soroban';
+import { buildFeeBumpTransaction, sorobanService } from '@/lib/soroban';
 import { networkPassphrase } from '@/config';
+import { assertSponsorableInnerTransaction, feeBumpRateLimiter } from '@/lib/feeBumpGuard';
 
 export async function POST(request: Request) {
   try {
@@ -24,6 +25,15 @@ export async function POST(request: Request) {
     const { innerTxXdr } = body;
     if (!innerTxXdr) {
       return NextResponse.json({ error: 'Missing innerTxXdr in request body' }, { status: 400 });
+    }
+
+    // Rate-limit by caller IP before doing any parsing/RPC work (issue #124).
+    const callerIp = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
+    if (!feeBumpRateLimiter.tryConsume(callerIp)) {
+      return NextResponse.json(
+        { error: 'Too many fee-bump requests. Please slow down.' },
+        { status: 429 },
+      );
     }
 
     // Load sponsor keypair
@@ -52,6 +62,18 @@ export async function POST(request: Request) {
         { error: `Invalid inner transaction XDR: ${msg}` },
         { status: 400 },
       );
+    }
+
+    // Only fee-bump a signed lock_assets/unlock_assets call against a known
+    // pool contract — never an arbitrary caller-supplied transaction (#124).
+    try {
+      const pools = await sorobanService.getFactoryPools();
+      const knownPoolContractIds = new Set(pools.map((pool) => pool.contractAddress));
+      assertSponsorableInnerTransaction(innerTxObj, knownPoolContractIds);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.warn('[SignFeeBump] Rejected non-sponsorable inner transaction:', msg);
+      return NextResponse.json({ error: msg }, { status: 400 });
     }
 
     // Build the fee-bump transaction
