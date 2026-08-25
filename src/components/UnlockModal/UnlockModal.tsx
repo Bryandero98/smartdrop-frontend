@@ -351,11 +351,11 @@ export default function UnlockModal() {
                 <Alert
                   status="warning"
                   borderRadius="2xl"
-                  bg="#2a2412"
-                  color="#f6c453"
+                  bg="app.warningBg"
+                  color="app.warningFg"
                   fontSize="sm"
                 >
-                  <AlertIcon color="#f6c453" />
+                  <AlertIcon color="app.warningFg" />
                   Assets are time-locked for security. You can unlock once the countdown
                   reaches zero to protect against impulsive withdrawals.
                 </Alert>
@@ -449,8 +449,8 @@ export default function UnlockModal() {
               )}
 
               {step === "timeout" && (
-                <Alert status="warning" borderRadius="2xl" bg="#2a2412" color="#f6c453" aria-live="assertive" aria-atomic="true">
-                  <AlertIcon color="#f6c453" />
+                <Alert status="warning" borderRadius="2xl" bg="app.warningBg" color="app.warningFg" aria-live="assertive" aria-atomic="true">
+                  <AlertIcon color="app.warningFg" />
                   <Flex direction="column" gap={1}>
                     <Text>Confirmation is taking longer than expected.</Text>
                     {explorerUrl && (
@@ -469,11 +469,11 @@ export default function UnlockModal() {
                   <Alert
                     status="warning"
                     borderRadius="2xl"
-                    bg="#2a2412"
-                    color="#f6c453"
+                    bg="app.warningBg"
+                    color="app.warningFg"
                     fontSize="sm"
                   >
-                    <AlertIcon color="#f6c453" />
+                    <AlertIcon color="app.warningFg" />
                     Warning: remaining stake below minimum — the contract will close this position entirely
                   </Alert>
                 )}
@@ -482,13 +482,13 @@ export default function UnlockModal() {
                 <Alert
                   status="error"
                   borderRadius="2xl"
-                  bg="#2a1414"
-                  color="#ff8080"
+                  bg="app.errorBg"
+                  color="app.errorFg"
                   fontSize="sm"
                   aria-live="assertive"
                   aria-atomic="true"
                 >
-                  <AlertIcon color="#ff8080" />
+                  <AlertIcon color="app.errorFg" />
                   {error}
                 </Alert>
               )}

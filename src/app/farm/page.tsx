@@ -319,36 +319,36 @@ function DepositModal({
             )}
 
             {feePreview.isError && (
-              <Alert status="error" borderRadius="2xl" bg="#2a1414" color="#ff8080">
-                <AlertIcon color="#ff8080" />
+              <Alert status="error" borderRadius="2xl" bg="app.errorBg" color="app.errorFg">
+                <AlertIcon color="app.errorFg" />
                 Fee simulation failed. Check the amount and try again.
               </Alert>
             )}
 
             {balanceQuery.isError && (
-              <Alert status="error" borderRadius="2xl" bg="#2a1414" color="#ff8080">
-                <AlertIcon color="#ff8080" />
+              <Alert status="error" borderRadius="2xl" bg="app.errorBg" color="app.errorFg">
+                <AlertIcon color="app.errorFg" />
                 Unable to load your Horizon balance.
               </Alert>
             )}
 
             {flow.error && (
-              <Alert status="error" borderRadius="2xl" bg="#2a1414" color="#ff8080" aria-live="assertive" aria-atomic="true">
-                <AlertIcon color="#ff8080" />
+              <Alert status="error" borderRadius="2xl" bg="app.errorBg" color="app.errorFg" aria-live="assertive" aria-atomic="true">
+                <AlertIcon color="app.errorFg" />
                 {flow.error}
               </Alert>
             )}
 
             {isFeeSponsored && (
-              <Alert status="warning" borderRadius="2xl" bg="#2d2216" color="#ffb86c" fontSize="sm" border="1px solid #7c5c24">
-                <AlertIcon color="#ffb86c" />
+              <Alert status="warning" borderRadius="2xl" bg="app.feeWarnBg" color="app.feeWarnFg" fontSize="sm" border="1px solid app.feeWarnBorder">
+                <AlertIcon color="app.feeWarnFg" />
                 Your fees are sponsored for this transaction
               </Alert>
             )}
 
             {!isConnected && (
-              <Alert status="warning" borderRadius="2xl" bg="#2a2412" color="#f6c453">
-                <AlertIcon color="#f6c453" />
+              <Alert status="warning" borderRadius="2xl" bg="app.warningBg" color="app.warningFg">
+                <AlertIcon color="app.warningFg" />
                 Connect your Freighter wallet to deposit.
               </Alert>
             )}

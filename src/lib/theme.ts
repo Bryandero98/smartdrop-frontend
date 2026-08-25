@@ -31,6 +31,16 @@ const theme = extendTheme({
       // Tooltip
       "app.tooltipBg": { default: "#f0f0f0",  _dark: "#222222" },
       "app.tooltipFg": { default: "#171717",  _dark: "#ffffff" },
+      // Alerts — error: #b3261e passes 4.5:1 on #fdecec; #ff8080 passes 4.5:1 on #2a1414
+      "app.errorBg":   { default: "#fdecec",  _dark: "#2a1414" },
+      "app.errorFg":   { default: "#b3261e",  _dark: "#ff8080" },
+      // Alerts — warning: #8a5a00 passes 4.5:1 on #fdf3e2; #f6c453 passes 4.5:1 on #2a2412
+      "app.warningBg": { default: "#fdf3e2",  _dark: "#2a2412" },
+      "app.warningFg": { default: "#8a5a00",  _dark: "#f6c453" },
+      // Alerts — fee-sponsored warning: #9a6b00 passes 4.5:1 on #fef3cd; #ffb86c passes 4.5:1 on #2d2216
+      "app.feeWarnBg":     { default: "#fef3cd", _dark: "#2d2216" },
+      "app.feeWarnFg":     { default: "#9a6b00", _dark: "#ffb86c" },
+      "app.feeWarnBorder": { default: "#c9a84c", _dark: "#7c5c24" },
     },
   },
   styles: {
