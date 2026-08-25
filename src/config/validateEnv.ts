@@ -5,8 +5,17 @@ import { StrKey } from '@stellar/stellar-sdk';
  * env var fall through to demo-mode data or a runtime 500 (issue #199).
  * Called from next.config.ts, which Next.js loads before both `next build`
  * and `next dev`/`next start`.
+ *
+ * `strict: false` downgrades a failure to a console warning instead of
+ * throwing. next.config.ts uses this for Netlify's `deploy-preview` /
+ * `branch-deploy` contexts (Netlify sets `CONTEXT`), which don't necessarily
+ * have production Soroban config — those builds fell into silent demo mode
+ * before this change too, so warn-and-continue there is not a regression,
+ * just a louder version of the previous behavior. Local dev/build and
+ * Netlify's `production` context stay strict.
  */
-export function validateEnv(options: { isStaticExport: boolean }): void {
+export function validateEnv(options: { isStaticExport: boolean; strict?: boolean }): void {
+  const { strict = true } = options;
   const problems: string[] = [];
 
   const factoryContractId = process.env.NEXT_PUBLIC_FACTORY_CONTRACT_ID;
@@ -41,9 +50,12 @@ export function validateEnv(options: { isStaticExport: boolean }): void {
   }
 
   if (problems.length > 0) {
-    throw new Error(
+    const message =
       `Invalid environment configuration:\n  - ${problems.join('\n  - ')}\n` +
-        'Set the required variables in .env.local before building or starting the app.',
-    );
+      'Set the required variables in .env.local before building or starting the app.';
+    if (strict) {
+      throw new Error(message);
+    }
+    console.warn(`\n⚠️  ${message}\n`);
   }
 }

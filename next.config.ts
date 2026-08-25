@@ -17,7 +17,16 @@ const isStaticExport = process.env.NEXT_EXPORT === "true";
 
 // Fail the build immediately on missing/malformed env vars instead of
 // silently falling back to demo mode or a runtime 500 (issue #199).
-validateEnv({ isStaticExport });
+//
+// Netlify sets CONTEXT to "production" | "deploy-preview" | "branch-deploy"
+// (unset locally and in most other CI). Preview/branch-deploy builds don't
+// necessarily carry production Soroban config, and previously fell into
+// silent demo mode the same as any other missing-config build — so those
+// contexts warn instead of failing the build. Local dev/build and the
+// production context stay strict.
+const netlifyContext = process.env.CONTEXT;
+const isNetlifyPreview = netlifyContext === "deploy-preview" || netlifyContext === "branch-deploy";
+validateEnv({ isStaticExport, strict: !isNetlifyPreview });
 const backendApiOrigin = (() => {
   try {
     return new URL(

@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { StrKey } from '@stellar/stellar-sdk';
 import { validateEnv } from './validateEnv';
 
@@ -72,6 +72,25 @@ describe('validateEnv', () => {
     process.env.STELLAR_FEE_SPONSOR_SECRET = 'not-a-secret-key';
     expect(() => validateEnv({ isStaticExport: false })).toThrow(
       /not a valid Stellar secret key/,
+    );
+  });
+
+  it('warns instead of throwing when strict is false', () => {
+    delete process.env.NEXT_PUBLIC_FACTORY_CONTRACT_ID;
+    delete process.env.STELLAR_FEE_SPONSOR_SECRET;
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    expect(() => validateEnv({ isStaticExport: false, strict: false })).not.toThrow();
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining('NEXT_PUBLIC_FACTORY_CONTRACT_ID is not set'),
+    );
+    warnSpy.mockRestore();
+  });
+
+  it('defaults to strict when the option is omitted', () => {
+    delete process.env.NEXT_PUBLIC_FACTORY_CONTRACT_ID;
+    delete process.env.STELLAR_FEE_SPONSOR_SECRET;
+    expect(() => validateEnv({ isStaticExport: false })).toThrow(
+      /NEXT_PUBLIC_FACTORY_CONTRACT_ID is not set/,
     );
   });
 });
