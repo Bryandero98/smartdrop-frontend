@@ -105,3 +105,5 @@ export const FarmPoolRow = memo(function FarmPoolRow({
     </Flex>
   );
 }, farmPoolRowPropsAreEqual);
+
+FarmPoolRow.displayName = "FarmPoolRow";
